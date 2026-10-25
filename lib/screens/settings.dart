@@ -60,8 +60,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   style: TextStyle(fontSize: 12, height: 1.7, color: C.muted)),
             ]),
           ),
-          const SizedBox(height: 12),
-          AppCard(
+          if (Reminders.supported) const SizedBox(height: 12),
+          if (Reminders.supported) AppCard(
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,

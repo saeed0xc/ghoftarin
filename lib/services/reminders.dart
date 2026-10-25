@@ -9,8 +9,11 @@ class Reminders {
   static final _plugin = FlutterLocalNotificationsPlugin();
   static bool _ready = false;
 
+  /// Local scheduled notifications are not available in the web app.
+  static bool get supported => !kIsWeb;
+
   static Future<void> init() async {
-    if (_ready) return;
+    if (_ready || !supported) return;
     try {
       tzdata.initializeTimeZones();
       final info = await FlutterTimezone.getLocalTimezone();
@@ -29,6 +32,7 @@ class Reminders {
   }
 
   static Future<void> schedule(int hour, int minute) async {
+    if (!supported) return;
     await init();
     final android = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     await android?.requestNotificationsPermission();
@@ -52,6 +56,7 @@ class Reminders {
   }
 
   static Future<void> cancel() async {
+    if (!supported) return;
     await init();
     await _plugin.cancel(id: 1);
   }

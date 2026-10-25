@@ -109,6 +109,24 @@ class _ProgressScreenState extends State<ProgressScreen> {
       child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
         for (var i = 0; i < rs.length; i++)
           Expanded(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 44),
+                child: _bar(rs, i),
+              ),
+            ),
+          ),
+        // keep 7 slots so a single session is not one full-width bar
+        for (var i = rs.length; i < 7; i++) const Expanded(child: SizedBox()),
+      ]),
+    );
+  }
+
+  Widget _bar(List<SessionRecord> rs, int i) {
+    return SizedBox(
+      height: 170,
+      child: Row(children: [
+          Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: LayoutBuilder(builder: (context, box) {

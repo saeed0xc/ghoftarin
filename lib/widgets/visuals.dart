@@ -31,9 +31,12 @@ class BreathRing extends StatelessWidget {
         child: CustomPaint(
           painter: _RingPainter(progress.clamp(0, 1), color, track, stroke),
           child: Center(
-            child: Text(label,
-                style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.w800, color: C.ink),
-                textDirection: TextDirection.rtl),
+            // '✓' is drawn as an icon: the bundled fonts have no check mark glyph
+            child: label == '✓'
+                ? Icon(Icons.check_rounded, size: fontSize * 1.4, color: C.ink)
+                : Text(label,
+                    style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.w800, color: C.ink),
+                    textDirection: TextDirection.rtl),
           ),
         ),
       );
