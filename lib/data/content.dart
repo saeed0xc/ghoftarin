@@ -7,7 +7,8 @@ class Passage {
   final String source;
   final String audience; // 'adult' | 'child' | 'all'
   final List<String> phrases;
-  final List<int> syllables;
+  final List<int> syllables; // 0 = not counted (no speech-rate figure)
+  final String separator; // between phrases on the page
 
   const Passage({
     required this.id,
@@ -16,6 +17,7 @@ class Passage {
     required this.audience,
     required this.phrases,
     required this.syllables,
+    this.separator = ' ',
   });
 }
 

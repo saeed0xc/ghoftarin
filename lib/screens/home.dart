@@ -5,7 +5,9 @@ import '../data/store.dart';
 import '../fa.dart';
 import '../theme.dart';
 import '../widgets/visuals.dart';
+import 'guide.dart';
 import 'practice.dart';
+import 'words.dart';
 import 'settings.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -30,6 +32,11 @@ class HomeScreen extends StatelessWidget {
                 Text(done ? 'تمرین امروز انجام شد' : 'سلام! آماده‌ی تمرین امروز؟',
                     style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
               ]),
+            ),
+            IconButton(
+              tooltip: 'راهنما',
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const GuideScreen())),
+              icon: const Icon(Icons.help_outline, color: C.muted),
             ),
             IconButton(
               tooltip: 'تنظیمات',
@@ -66,6 +73,38 @@ class HomeScreen extends StatelessWidget {
               ),
             ]),
           ),
+          const SizedBox(height: 12),
+          InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => WordsScreen(app: app))),
+            child: AppCard(
+              child: Row(children: [
+                const CircleAvatar(radius: 20, backgroundColor: C.brandTint, child: Icon(Icons.record_voice_over_outlined, color: C.brandDark)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Text('تمرین کلمه', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                    Text(app.wordGroups.isEmpty ? 'روی صداهایی که برایت سخت‌ترند' : 'پله‌ی ${faNum(app.wordStep + 1)} از ۳',
+                        style: const TextStyle(fontSize: 12, color: C.muted)),
+                  ]),
+                ),
+                const Icon(Icons.chevron_left, color: C.muted),
+              ]),
+            ),
+          ),
+          if (app.needsTherapistNudge) ...[
+            const SizedBox(height: 12),
+            AppCard(
+              color: C.warmBg,
+              border: false,
+              padding: const EdgeInsets.fromLTRB(16, 12, 8, 6),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                const Text('گفتارین ابزار تمرین است، نه درمان. برای برنامه‌ی دقیق، دست‌کم یک بار با گفتاردرمانگر ارزیابی شو.',
+                    style: TextStyle(fontSize: 13, height: 1.8)),
+                Align(alignment: AlignmentDirectional.centerEnd, child: GuideLink(pageId: 'therapist', label: 'کی و چرا؟')),
+              ]),
+            ),
+          ],
           const SizedBox(height: 12),
           if (week.phrases > 0)
             Row(children: [

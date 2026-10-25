@@ -125,7 +125,8 @@ class BookPage extends StatelessWidget {
   final String source;
   final List<String> phrases;
   final int current; // -1 = none; phrases.length = all done
-  const BookPage({super.key, required this.source, required this.phrases, required this.current});
+  final String separator;
+  const BookPage({super.key, required this.source, required this.phrases, required this.current, this.separator = ' '});
 
   @override
   Widget build(BuildContext context) {
@@ -140,7 +141,7 @@ class BookPage extends StatelessWidget {
           backgroundColor: isCur ? C.brandSoft : null,
         ),
       ));
-      if (i < phrases.length - 1) spans.add(const TextSpan(text: ' '));
+      if (i < phrases.length - 1) spans.add(TextSpan(text: separator, style: const TextStyle(color: Color(0xFFB0BABD))));
     }
     return Container(
       width: double.infinity,

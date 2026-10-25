@@ -6,6 +6,7 @@ import '../data/content.dart';
 import '../fa.dart';
 import '../theme.dart';
 import '../widgets/visuals.dart';
+import 'guide.dart';
 
 /// Live reading: listens to the mic, lights the current phrase, fills the
 /// breath ring during the pause and rates each phrase start.
@@ -51,6 +52,7 @@ class _SessionViewState extends State<SessionView> {
     _engine = FluencyEngine(
       config: EngineConfig(waitTarget: widget.waitTarget),
       syllables: widget.passage.syllables,
+      phraseTotal: widget.passage.phrases.length,
       onState: _onState,
       onPhrase: _onPhrase,
     );
@@ -179,6 +181,7 @@ class _SessionViewState extends State<SessionView> {
             BookPage(
               source: widget.passage.source,
               phrases: widget.passage.phrases,
+              separator: widget.passage.separator,
               current: _ui == _Ui.intro || _ui == _Ui.noPermission || _ui == _Ui.calibrating ? -1 : _index,
             ),
             const SizedBox(height: 16),
@@ -215,6 +218,8 @@ class _SessionViewState extends State<SessionView> {
             const SizedBox(height: 8),
             const Text('صدا فقط روی همین گوشی تحلیل می‌شود و ذخیره یا ارسال نمی‌شود.',
                 style: TextStyle(fontSize: 12, color: C.muted)),
+            if (widget.guided)
+              const Wrap(children: [GuideLink(pageId: 'pause', label: 'مکث چطور؟'), GuideLink(pageId: 'soft', label: 'شروع نرم چطور؟')]),
           ]),
         );
       case _Ui.noPermission:

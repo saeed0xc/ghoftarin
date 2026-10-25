@@ -78,6 +78,17 @@ class AppState extends ChangeNotifier {
   Assessment? assessment;
   final List<SessionRecord> sessions = [];
 
+  // safety screen
+  String ageGroup = 'adult'; // under7 | 7to12 | teen | adult
+  bool withTherapist = false;
+  bool suddenOnset = false;
+
+  // word practice
+  List<String> wordGroups = [];
+  int wordStep = 0; // ladder step 0..2
+
+  bool get needsTherapistNudge => !withTherapist;
+
   static const minWait = 0.8, maxWait = 3.0;
 
   Future<void> load() async {
@@ -92,6 +103,11 @@ class AppState extends ChangeNotifier {
       reminderOn = j['remOn'] as bool? ?? true;
       reminderHour = j['remH'] as int? ?? 20;
       reminderMinute = j['remM'] as int? ?? 0;
+      ageGroup = j['age'] as String? ?? 'adult';
+      withTherapist = j['slp'] as bool? ?? false;
+      suddenOnset = j['sudden'] as bool? ?? false;
+      wordGroups = ((j['wg'] as List?) ?? []).cast<String>();
+      wordStep = j['ws'] as int? ?? 0;
       final a = j['assess'];
       assessment = a == null ? null : Assessment.fromJson(a as Map<String, dynamic>);
       sessions
@@ -114,6 +130,11 @@ class AppState extends ChangeNotifier {
           'remOn': reminderOn,
           'remH': reminderHour,
           'remM': reminderMinute,
+          'age': ageGroup,
+          'slp': withTherapist,
+          'sudden': suddenOnset,
+          'wg': wordGroups,
+          'ws': wordStep,
           if (assessment != null) 'assess': assessment!.toJson(),
           'sessions': sessions.map((s) => s.toJson()).toList(),
         }));
@@ -123,6 +144,11 @@ class AppState extends ChangeNotifier {
     onboarded = false;
     forChild = false;
     waitTarget = 2.0;
+    ageGroup = 'adult';
+    withTherapist = false;
+    suddenOnset = false;
+    wordGroups = [];
+    wordStep = 0;
     assessment = null;
     sessions.clear();
     await save();

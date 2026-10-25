@@ -5,6 +5,7 @@ import '../data/store.dart';
 import '../fa.dart';
 import '../theme.dart';
 import 'practice.dart';
+import 'words.dart';
 
 /// All reading passages; any can be practised at any time.
 class LibraryScreen extends StatelessWidget {
@@ -25,6 +26,12 @@ class LibraryScreen extends StatelessWidget {
           const SizedBox(height: 4),
           const Text('هر متنی را می‌توانی انتخاب کنی. کتاب‌های بیشتر به‌زودی اضافه می‌شوند.',
               style: TextStyle(fontSize: 13, color: C.muted)),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => WordsScreen(app: app))),
+            icon: const Icon(Icons.record_voice_over_outlined),
+            label: const Text('تمرین کلمه روی صداهای سخت'),
+          ),
           const SizedBox(height: 16),
           for (final p in list) ...[
             InkWell(

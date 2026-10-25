@@ -159,7 +159,8 @@ double riseTime(List<double> env, int start, double hopMs, double floor) {
 /// [onState] and [onPhrase].
 class FluencyEngine {
   EngineConfig config;
-  final List<int> syllables; // per phrase; empty = unknown
+  final List<int> syllables; // per phrase; empty or 0 = unknown
+  final int? phraseTotal; // number of phrases; defaults to syllables.length
   void Function(EngineState state, double pauseElapsedSec)? onState;
   void Function(PhraseResult result)? onPhrase;
   void Function(double level)? onLevel; // 0..1 meter, every hop
@@ -167,6 +168,7 @@ class FluencyEngine {
   FluencyEngine({
     this.config = const EngineConfig(),
     this.syllables = const [],
+    this.phraseTotal,
     this.onState,
     this.onPhrase,
     this.onLevel,
@@ -225,7 +227,7 @@ class FluencyEngine {
   }
 
   /// Total phrases expected; when reached the engine moves to [EngineState.done].
-  int get phraseCount => syllables.isEmpty ? 1 << 30 : syllables.length;
+  int get phraseCount => phraseTotal ?? (syllables.isEmpty ? 1 << 30 : syllables.length);
 
   void addSamples(List<double> samples) {
     for (final s in samples) {
@@ -328,7 +330,7 @@ class FluencyEngine {
     final pause = _hopsToSec(_onsetHop - _lastVoiceHop);
     final rise = riseTime(_env, _onsetHop - _envStartHop, _hopMs, noise);
     final dur = _hopsToSec(durHops);
-    final syl = phraseIndex < syllables.length ? syllables[phraseIndex] : null;
+    final syl = phraseIndex < syllables.length && syllables[phraseIndex] > 0 ? syllables[phraseIndex] : null;
     final r = PhraseResult(
       index: phraseIndex,
       pauseSec: pause,

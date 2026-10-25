@@ -15,6 +15,9 @@ import 'package:goftarin/data/store.dart';
 import 'package:goftarin/main.dart';
 import 'package:goftarin/screens/onboarding.dart';
 import 'package:goftarin/screens/progress.dart';
+import 'package:goftarin/screens/guide.dart';
+import 'package:goftarin/screens/safety.dart';
+import 'package:goftarin/screens/words.dart';
 import 'package:goftarin/theme.dart';
 import 'package:goftarin/widgets/visuals.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -146,5 +149,12 @@ void main() {
       ),
       '4-reading',
     );
+  });
+
+  testWidgets('safety', (t) async => shoot(t, SafetyScreen(app: AppState()), '5-safety'));
+  testWidgets('guide', (t) async => shoot(t, const GuidePageScreen(pageId: 'soft'), '6-guide-soft'));
+  testWidgets('words', (t) async {
+    final app = demoState()..wordGroups = ['p', 'a']..wordStep = 1;
+    await shoot(t, WordsScreen(app: app), '7-words');
   });
 }

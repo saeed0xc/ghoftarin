@@ -5,6 +5,7 @@ import '../fa.dart';
 import '../services/reminders.dart';
 import '../theme.dart';
 import 'assessment.dart';
+import 'guide.dart';
 
 class SettingsScreen extends StatefulWidget {
   final AppState app;
@@ -98,6 +99,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
+                title: const Text('با گفتاردرمانگر کار می‌کنم', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                subtitle: const Text('زمان مکث و تکنیک‌ها را طبق نظر درمانگر تنظیم کن'),
+                value: app.withTherapist,
+                onChanged: (v) async {
+                  setState(() => app.withTherapist = v);
+                  await app.save();
+                },
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
                 title: const Text('حالت کودک', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
                 subtitle: const Text('متن‌های کودکانه و پرسش‌ها خطاب به والدین'),
                 value: app.forChild,
@@ -105,6 +116,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   setState(() => app.forChild = v);
                   await app.save();
                 },
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.help_outline, color: C.brandDark),
+                title: const Text('راهنمای روش‌ها'),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const GuideScreen())),
               ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -142,7 +159,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             style: TextStyle(fontSize: 12, height: 1.8, color: C.muted),
           ),
           const SizedBox(height: 8),
-          const Text('نسخه‌ی ۰٫۱ · آزمایشی', style: TextStyle(fontSize: 12, color: C.muted)),
+          const Text('نسخه‌ی ۰٫۲ · آزمایشی · متن‌ها در حال بازبینی گفتاردرمانگر', style: TextStyle(fontSize: 12, color: C.muted)),
         ],
       ),
     );

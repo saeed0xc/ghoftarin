@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/store.dart';
 import '../theme.dart';
 import '../widgets/visuals.dart';
-import 'assessment.dart';
+import 'safety.dart';
 
 class OnboardingScreen extends StatefulWidget {
   final AppState app;
@@ -55,7 +55,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   FilledButton(
                     onPressed: () {
                       widget.app.forChild = _child;
-                      Navigator.of(context).push(MaterialPageRoute(builder: (_) => AssessmentFlow(app: widget.app)));
+                      Navigator.of(context).push(MaterialPageRoute(builder: (_) => SafetyScreen(app: widget.app)));
                     },
                     child: const Text('شروع ارزیابی ۵ دقیقه‌ای'),
                   ),

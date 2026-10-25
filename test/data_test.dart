@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:goftarin/data/content.dart';
+import 'package:goftarin/data/guide.dart';
+import 'package:goftarin/data/words.dart';
 import 'package:goftarin/fa.dart';
 
 void main() {
@@ -24,5 +26,26 @@ void main() {
   test('confidence score', () {
     expect(confidenceScore([5, 1, 1, 1, 5]), 100);
     expect(confidenceScore([1, 5, 5, 5, 1]), 0);
+  });
+
+  test('word ladder interleaves the chosen sounds', () {
+    final p = ladderStep(['p', 'a'], 0);
+    expect(p.phrases.take(4).toList(), ['پدر', 'آب', 'پنجره', 'امروز']);
+    expect(p.phrases.length, 8);
+    expect(p.syllables.every((s) => s == 0), true);
+    expect(ladderStep(['sh'], 2).phrases.length, 2);
+    for (final g in soundGroups) {
+      for (final w in [...g.words, ...g.phrases, ...g.sentences]) {
+        expect(w.trim().isNotEmpty, true);
+      }
+    }
+  });
+
+  test('guide pages have unique ids', () {
+    final ids = guidePages.map((p) => p.id).toList();
+    expect(ids.toSet().length, ids.length);
+    for (final id in ['pause', 'soft', 'contact', 'continuous', 'therapist', 'parents']) {
+      expect(ids.contains(id), true, reason: id);
+    }
   });
 }
