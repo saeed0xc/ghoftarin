@@ -39,14 +39,22 @@ ThemeData buildTheme() {
     ),
   );
   return base.copyWith(
-    textTheme: base.textTheme.apply(bodyColor: C.ink, displayColor: C.ink, fontFamily: kUiFont),
+    textTheme: base.textTheme.apply(
+      bodyColor: C.ink,
+      displayColor: C.ink,
+      fontFamily: kUiFont,
+    ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: C.brand,
         foregroundColor: Colors.white,
         minimumSize: const Size.fromHeight(54),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        textStyle: const TextStyle(fontFamily: kUiFont, fontSize: 16, fontWeight: FontWeight.w700),
+        textStyle: const TextStyle(
+          fontFamily: kUiFont,
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
@@ -56,30 +64,49 @@ ThemeData buildTheme() {
         side: const BorderSide(color: C.line),
         backgroundColor: C.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        textStyle: const TextStyle(fontFamily: kUiFont, fontSize: 14, fontWeight: FontWeight.w700),
+        textStyle: const TextStyle(
+          fontFamily: kUiFont,
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: C.brand,
         minimumSize: const Size(48, 44),
-        textStyle: const TextStyle(fontFamily: kUiFont, fontSize: 14, fontWeight: FontWeight.w500),
+        textStyle: const TextStyle(
+          fontFamily: kUiFont,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: C.surface,
       indicatorColor: C.brandTint,
       surfaceTintColor: Colors.transparent,
-      labelTextStyle: WidgetStateProperty.resolveWith((s) => TextStyle(
-            fontFamily: kUiFont,
-            fontSize: 12,
-            fontWeight: s.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w400,
-            color: s.contains(WidgetState.selected) ? C.brandDark : C.muted,
-          )),
+      labelTextStyle: WidgetStateProperty.resolveWith(
+        (s) => TextStyle(
+          fontFamily: kUiFont,
+          fontSize: 12,
+          fontWeight: s.contains(WidgetState.selected)
+              ? FontWeight.w700
+              : FontWeight.w400,
+          color: s.contains(WidgetState.selected) ? C.brandDark : C.muted,
+        ),
+      ),
       iconTheme: WidgetStateProperty.resolveWith(
-          (s) => IconThemeData(color: s.contains(WidgetState.selected) ? C.brandDark : C.muted)),
+        (s) => IconThemeData(
+          color: s.contains(WidgetState.selected) ? C.brandDark : C.muted,
+        ),
+      ),
     ),
-    sliderTheme: const SliderThemeData(activeTrackColor: C.brand, thumbColor: C.brand, inactiveTrackColor: C.brandSoft),
+    sliderTheme: const SliderThemeData(
+      activeTrackColor: C.brand,
+      thumbColor: C.brand,
+      inactiveTrackColor: C.brandSoft,
+    ),
   );
 }
 
@@ -89,21 +116,22 @@ class AppCard extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final Color color;
   final bool border;
-  const AppCard(
-      {super.key,
-      required this.child,
-      this.padding = const EdgeInsets.all(18),
-      this.color = C.surface,
-      this.border = true});
+  const AppCard({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(18),
+    this.color = C.surface,
+    this.border = true,
+  });
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: padding,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(20),
-          border: border ? Border.all(color: C.line) : null,
-        ),
-        child: child,
-      );
+    padding: padding,
+    decoration: BoxDecoration(
+      color: color,
+      borderRadius: BorderRadius.circular(20),
+      border: border ? Border.all(color: C.line) : null,
+    ),
+    child: child,
+  );
 }

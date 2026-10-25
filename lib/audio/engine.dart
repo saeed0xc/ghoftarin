@@ -48,19 +48,19 @@ class EngineConfig {
   });
 
   EngineConfig copyWith({double? waitTarget}) => EngineConfig(
-        waitTarget: waitTarget ?? this.waitTarget,
-        sampleRate: sampleRate,
-        windowMs: windowMs,
-        hopMs: hopMs,
-        calibrationMs: calibrationMs,
-        minOnMs: minOnMs,
-        endMs: endMs,
-        minPhraseMs: minPhraseMs,
-        softMs: softMs,
-        hardMs: hardMs,
-        onFactor: onFactor,
-        offFactor: offFactor,
-      );
+    waitTarget: waitTarget ?? this.waitTarget,
+    sampleRate: sampleRate,
+    windowMs: windowMs,
+    hopMs: hopMs,
+    calibrationMs: calibrationMs,
+    minOnMs: minOnMs,
+    endMs: endMs,
+    minPhraseMs: minPhraseMs,
+    softMs: softMs,
+    hardMs: hardMs,
+    onFactor: onFactor,
+    offFactor: offFactor,
+  );
 }
 
 class PhraseResult {
@@ -72,6 +72,9 @@ class PhraseResult {
   final double durationSec;
   final double? syllablesPerSec;
   final List<double> onsetEnvelope; // for drawing the onset wave
+  final double startSec; // position in the session audio (session only)
+  final double endSec;
+  final double peak; // max |sample| 0..1 during the phrase (session only)
 
   const PhraseResult({
     required this.index,
@@ -82,28 +85,31 @@ class PhraseResult {
     required this.durationSec,
     required this.syllablesPerSec,
     required this.onsetEnvelope,
+    this.startSec = 0,
+    this.endSec = 0,
+    this.peak = 0,
   });
 
   Map<String, dynamic> toJson() => {
-        'i': index,
-        'p': _r(pauseSec, 2),
-        'e': early,
-        'r': _r(riseMs, 0),
-        'o': onset.index,
-        'd': _r(durationSec, 2),
-        if (syllablesPerSec != null) 's': _r(syllablesPerSec!, 2),
-      };
+    'i': index,
+    'p': _r(pauseSec, 2),
+    'e': early,
+    'r': _r(riseMs, 0),
+    'o': onset.index,
+    'd': _r(durationSec, 2),
+    if (syllablesPerSec != null) 's': _r(syllablesPerSec!, 2),
+  };
 
   factory PhraseResult.fromJson(Map<String, dynamic> j) => PhraseResult(
-        index: j['i'] as int,
-        pauseSec: (j['p'] as num).toDouble(),
-        early: j['e'] as bool,
-        riseMs: (j['r'] as num).toDouble(),
-        onset: OnsetClass.values[j['o'] as int],
-        durationSec: (j['d'] as num).toDouble(),
-        syllablesPerSec: (j['s'] as num?)?.toDouble(),
-        onsetEnvelope: const [],
-      );
+    index: j['i'] as int,
+    pauseSec: (j['p'] as num).toDouble(),
+    early: j['e'] as bool,
+    riseMs: (j['r'] as num).toDouble(),
+    onset: OnsetClass.values[j['o'] as int],
+    durationSec: (j['d'] as num).toDouble(),
+    syllablesPerSec: (j['s'] as num?)?.toDouble(),
+    onsetEnvelope: const [],
+  );
 
   static double _r(double v, int d) {
     final f = math.pow(10, d);
@@ -173,11 +179,25 @@ class FluencyEngine {
     this.onPhrase,
     this.onLevel,
   }) {
+    // 2nd-order Butterworth high-pass at 100 Hz: removes hum and the
+    // low-frequency rumble of fans, air conditioners and traffic, which
+    // otherwise masks the start of speech.
+    final w0 = 2 * math.pi * 100 / config.sampleRate,
+        alpha = math.sin(w0) / math.sqrt2,
+        c = math.cos(w0);
+    final a0 = 1 + alpha;
+    _b0 = (1 + c) / 2 / a0;
+    _b1 = -(1 + c) / a0;
+    _b2 = (1 + c) / 2 / a0;
+    _a1 = -2 * c / a0;
+    _a2 = (1 - alpha) / a0;
     _win = config.sampleRate * config.windowMs ~/ 1000;
     _hop = config.sampleRate * config.hopMs ~/ 1000;
     _ring = List<double>.filled(_win, 0);
   }
 
+  late final double _b0, _b1, _b2, _a1, _a2;
+  double _x1 = 0, _x2 = 0, _y1 = 0, _y2 = 0;
   late final int _win;
   late final int _hop;
   late final List<double> _ring;
@@ -198,6 +218,21 @@ class FluencyEngine {
   int phraseIndex = 0;
   final List<PhraseResult> results = [];
 
+  // voicing / level tracking
+  double _hopPeak = 0;
+  double _phrasePeak = 0;
+  int _periodicHops = 0;
+  int _speakHops = 0;
+  late final List<double> _ordered = List<double>.filled(_win, 0);
+
+  static bool debugVoicing = false;
+
+  /// Times the noise floor had to be raised mid-session (fan, traffic, …).
+  int noiseResets = 0;
+
+  /// Room noise after calibration is high enough to hurt the measurements.
+  bool get noisyRoom => noise > 0.015;
+
   double get _hopMs => config.hopMs.toDouble();
   double _hopsToSec(int h) => h * _hopMs / 1000;
 
@@ -209,6 +244,7 @@ class FluencyEngine {
     _hopIndex = 0;
     _filled = 0;
     _sinceHop = 0;
+    noiseResets = 0;
     onState?.call(state, 0);
   }
 
@@ -222,22 +258,33 @@ class FluencyEngine {
     if (results.isEmpty) return null;
     final r = results.removeLast();
     phraseIndex = r.index;
-    if (state == EngineState.done || state == EngineState.pausing) _enterPause();
+    if (state == EngineState.done || state == EngineState.pausing) {
+      _enterPause();
+    }
     return r;
   }
 
   /// Total phrases expected; when reached the engine moves to [EngineState.done].
-  int get phraseCount => phraseTotal ?? (syllables.isEmpty ? 1 << 30 : syllables.length);
+  int get phraseCount =>
+      phraseTotal ?? (syllables.isEmpty ? 1 << 30 : syllables.length);
 
   void addSamples(List<double> samples) {
-    for (final s in samples) {
+    for (final x in samples) {
+      final s = _b0 * x + _b1 * _x1 + _b2 * _x2 - _a1 * _y1 - _a2 * _y2;
+      _x2 = _x1;
+      _x1 = x;
+      _y2 = _y1;
+      _y1 = s;
       _ring[_ringPos] = s;
       _ringPos = (_ringPos + 1) % _win;
       if (_filled < _win) _filled++;
       _sinceHop++;
+      final a = x < 0 ? -x : x; // peak of the raw signal (clipping check)
+      if (a > _hopPeak) _hopPeak = a;
       if (_sinceHop >= _hop && _filled == _win) {
         _sinceHop = 0;
         _processHop(_rms());
+        _hopPeak = 0;
       }
     }
   }
@@ -248,6 +295,44 @@ class FluencyEngine {
       sum += v * v;
     }
     return math.sqrt(sum / _win);
+  }
+
+  /// True when the current window looks like voiced speech: a clear pitch
+  /// peak (80–400 Hz) in the normalised autocorrelation, after a dip. Steady
+  /// low-pass noise (fans, traffic) decays smoothly and has no such peak.
+  bool _periodic() {
+    final n = _win;
+    for (var i = 0; i < n; i++) {
+      _ordered[i] = _ring[(_ringPos + i) % n];
+    }
+    var r0 = 0.0;
+    for (var i = 0; i < n; i++) {
+      r0 += _ordered[i] * _ordered[i];
+    }
+    if (r0 <= 0) return false;
+    final sr = config.sampleRate;
+    final minLag = sr ~/ 800, lo = sr ~/ 400, hi = math.min(sr ~/ 80, n - 2);
+    final r = List<double>.filled(hi + 2, 0);
+    for (var lag = minLag; lag <= hi + 1; lag++) {
+      var acc = 0.0;
+      for (var i = 0; i + lag < n; i++) {
+        acc += _ordered[i] * _ordered[i + lag];
+      }
+      r[lag] = acc / r0 * n / (n - lag); // unbiased
+    }
+    var best = -1.0, bestLag = -1;
+    for (var lag = lo; lag <= hi; lag++) {
+      if (r[lag] > best && r[lag] >= r[lag - 1] && r[lag] >= r[lag + 1]) {
+        best = r[lag];
+        bestLag = lag;
+      }
+    }
+    if (bestLag < 0 || best < 0.45) return false;
+    var dip = 1.0;
+    for (var lag = minLag; lag < bestLag; lag++) {
+      if (r[lag] < dip) dip = r[lag];
+    }
+    return dip < best - 0.25;
   }
 
   void _processHop(double v) {
@@ -276,7 +361,15 @@ class FluencyEngine {
         _pushEnv(v, h);
         onState?.call(state, _hopsToSec(h - _lastVoiceHop));
         if (on) {
-          if (_candHop < 0) _candHop = h;
+          if (_candHop < 0) {
+            _candHop = h;
+            _phrasePeak = 0;
+            _periodicHops = 0;
+            _speakHops = 0;
+          }
+          if (_hopPeak > _phrasePeak) _phrasePeak = _hopPeak;
+          _speakHops++;
+          if (_periodic()) _periodicHops++;
           if ((h - _candHop + 1) * _hopMs >= config.minOnMs) _beginSpeech(h);
         } else {
           _candHop = -1;
@@ -287,6 +380,18 @@ class FluencyEngine {
         if (h - _onsetHop < (500 / _hopMs)) _env.add(v);
         if (!off) {
           _voicedEndHop = h;
+          _speakHops++;
+          if (_hopPeak > _phrasePeak) _phrasePeak = _hopPeak;
+          if (_periodic()) _periodicHops++;
+          // a steady new noise (fan switched on, traffic) that never stops:
+          // raise the noise floor and go back to waiting
+          if ((h - _onsetHop) * _hopMs > 12000 &&
+              _periodicHops < 0.2 * _speakHops) {
+            noise = math.max(noise, v * 1.1 / config.offFactor);
+            noiseResets++;
+            _lastVoiceHop = h;
+            _enterPause();
+          }
         } else if ((h - _voicedEndHop) * _hopMs > config.endMs) {
           _endPhrase();
         }
@@ -294,12 +399,12 @@ class FluencyEngine {
     }
   }
 
-  // keep ~100 ms of envelope before an onset
+  // keep ~300 ms of envelope before an onset (for backtracking)
   void _pushEnv(double v, int h) {
     _env.add(v);
-    final keep = (100 / _hopMs).round();
+    final keep = (300 / _hopMs).round();
     if (_env.length > keep) {
-      _env.removeAt(0);
+      _env.removeRange(0, _env.length - keep);
     }
     _envStartHop = h - _env.length + 1;
   }
@@ -312,6 +417,17 @@ class FluencyEngine {
   }
 
   void _beginSpeech(int h) {
+    // The on-threshold is crossed some way into a soft start. Walk back to
+    // where the envelope first rose clearly above the room noise, so pause
+    // and onset are measured from the real start of the voice.
+    var start = _candHop;
+    final floor = noise * 1.8;
+    for (var k = _candHop - 1; k > _lastVoiceHop && k >= _envStartHop; k--) {
+      final v = _env[k - _envStartHop];
+      if (v <= floor) break;
+      start = k;
+    }
+    _candHop = start;
     _onsetHop = _candHop;
     _voicedEndHop = h;
     state = EngineState.speaking;
@@ -320,8 +436,18 @@ class FluencyEngine {
 
   void _endPhrase() {
     final durHops = _voicedEndHop - _onsetHop + 1;
-    if (durHops * _hopMs < config.minPhraseMs) {
-      // a cough or click: ignore it, keep the pause clock from before
+    // too short (cough, click) or never voiced (clap, door, rustle): ignore it
+    // and keep the pause clock from before
+    assert(() {
+      if (debugVoicing) {
+        // ignore: avoid_print
+        print('phrase cand: hops=$_speakHops periodic=$_periodicHops');
+      }
+      return true;
+    }());
+    if (durHops * _hopMs < config.minPhraseMs ||
+        _periodicHops < 3 ||
+        _periodicHops < 0.35 * _speakHops) {
       state = EngineState.pausing;
       _candHop = -1;
       onState?.call(state, _hopsToSec(_hopIndex - _lastVoiceHop));
@@ -330,7 +456,9 @@ class FluencyEngine {
     final pause = _hopsToSec(_onsetHop - _lastVoiceHop);
     final rise = riseTime(_env, _onsetHop - _envStartHop, _hopMs, noise);
     final dur = _hopsToSec(durHops);
-    final syl = phraseIndex < syllables.length && syllables[phraseIndex] > 0 ? syllables[phraseIndex] : null;
+    final syl = phraseIndex < syllables.length && syllables[phraseIndex] > 0
+        ? syllables[phraseIndex]
+        : null;
     final r = PhraseResult(
       index: phraseIndex,
       pauseSec: pause,
@@ -340,6 +468,9 @@ class FluencyEngine {
       durationSec: dur,
       syllablesPerSec: syl == null ? null : syl / dur,
       onsetEnvelope: List<double>.unmodifiable(_env),
+      startSec: _hopsToSec(_onsetHop) + config.windowMs / 1000,
+      endSec: _hopsToSec(_voicedEndHop) + config.windowMs / 1000,
+      peak: _phrasePeak,
     );
     results.add(r);
     onPhrase?.call(r);
@@ -362,12 +493,13 @@ class SessionSummary {
   final double medianPause;
   final double? meanRate;
 
-  const SessionSummary(
-      {required this.phrases,
-      required this.softCount,
-      required this.pauseOkCount,
-      required this.medianPause,
-      required this.meanRate});
+  const SessionSummary({
+    required this.phrases,
+    required this.softCount,
+    required this.pauseOkCount,
+    required this.medianPause,
+    required this.meanRate,
+  });
 
   double get softRatio => phrases == 0 ? 0 : softCount / phrases;
   double get pauseRatio => phrases == 0 ? 0 : pauseOkCount / phrases;
@@ -375,7 +507,12 @@ class SessionSummary {
   factory SessionSummary.of(List<PhraseResult> rs) {
     if (rs.isEmpty) {
       return const SessionSummary(
-          phrases: 0, softCount: 0, pauseOkCount: 0, medianPause: 0, meanRate: null);
+        phrases: 0,
+        softCount: 0,
+        pauseOkCount: 0,
+        medianPause: 0,
+        meanRate: null,
+      );
     }
     final pauses = rs.map((r) => r.pauseSec).toList()..sort();
     final rates = rs.map((r) => r.syllablesPerSec).whereType<double>().toList();
@@ -384,7 +521,9 @@ class SessionSummary {
       softCount: rs.where((r) => r.onset == OnsetClass.soft).length,
       pauseOkCount: rs.where((r) => !r.early).length,
       medianPause: pauses[pauses.length ~/ 2],
-      meanRate: rates.isEmpty ? null : rates.reduce((a, b) => a + b) / rates.length,
+      meanRate: rates.isEmpty
+          ? null
+          : rates.reduce((a, b) => a + b) / rates.length,
     );
   }
 }

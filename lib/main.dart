@@ -17,7 +17,10 @@ Future<void> main() async {
   runApp(GoftarinApp(app: app));
   // schedule the daily reminder without blocking the first frame
   if (app.onboarded && app.reminderOn) {
-    Reminders.schedule(app.reminderHour, app.reminderMinute).catchError((e) => debugPrint('reminder: $e'));
+    Reminders.schedule(
+      app.reminderHour,
+      app.reminderMinute,
+    ).catchError((e) => debugPrint('reminder: $e'));
   }
 }
 
@@ -40,7 +43,8 @@ class GoftarinApp extends StatelessWidget {
       ],
       home: ListenableBuilder(
         listenable: app,
-        builder: (context, _) => app.onboarded ? Shell(app: app) : OnboardingScreen(app: app),
+        builder: (context, _) =>
+            app.onboarded ? Shell(app: app) : OnboardingScreen(app: app),
       ),
     );
   }
@@ -71,10 +75,26 @@ class _ShellState extends State<Shell> {
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'خانه'),
-          NavigationDestination(icon: Icon(Icons.menu_book_outlined), selectedIcon: Icon(Icons.menu_book), label: 'کتاب'),
-          NavigationDestination(icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'گفت‌وگو'),
-          NavigationDestination(icon: Icon(Icons.bar_chart_outlined), selectedIcon: Icon(Icons.bar_chart), label: 'پیشرفت'),
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: 'خانه',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.menu_book_outlined),
+            selectedIcon: Icon(Icons.menu_book),
+            label: 'کتاب',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.chat_bubble_outline),
+            selectedIcon: Icon(Icons.chat_bubble),
+            label: 'گفت‌وگو',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.bar_chart_outlined),
+            selectedIcon: Icon(Icons.bar_chart),
+            label: 'پیشرفت',
+          ),
         ],
       ),
     );

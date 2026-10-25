@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../audio/engine.dart';
+import 'situations.dart';
 
 class SessionRecord {
   final DateTime date;
@@ -23,20 +24,22 @@ class SessionRecord {
   SessionSummary get summary => SessionSummary.of(results);
 
   Map<String, dynamic> toJson() => {
-        'd': date.toIso8601String(),
-        'p': passageId,
-        'w': waitTarget,
-        'r': results.map((e) => e.toJson()).toList(),
-        if (selfRating != null) 's': selfRating,
-      };
+    'd': date.toIso8601String(),
+    'p': passageId,
+    'w': waitTarget,
+    'r': results.map((e) => e.toJson()).toList(),
+    if (selfRating != null) 's': selfRating,
+  };
 
   factory SessionRecord.fromJson(Map<String, dynamic> j) => SessionRecord(
-        date: DateTime.parse(j['d'] as String),
-        passageId: j['p'] as String,
-        waitTarget: (j['w'] as num).toDouble(),
-        results: (j['r'] as List).map((e) => PhraseResult.fromJson(e as Map<String, dynamic>)).toList(),
-        selfRating: j['s'] as int?,
-      );
+    date: DateTime.parse(j['d'] as String),
+    passageId: j['p'] as String,
+    waitTarget: (j['w'] as num).toDouble(),
+    results: (j['r'] as List)
+        .map((e) => PhraseResult.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    selfRating: j['s'] as int?,
+  );
 }
 
 class Assessment {
@@ -45,23 +48,30 @@ class Assessment {
   final int confidence; // 0..100
   final int selfRating; // 0..9
 
-  Assessment({required this.date, required this.results, required this.confidence, required this.selfRating});
+  Assessment({
+    required this.date,
+    required this.results,
+    required this.confidence,
+    required this.selfRating,
+  });
 
   SessionSummary get summary => SessionSummary.of(results);
 
   Map<String, dynamic> toJson() => {
-        'd': date.toIso8601String(),
-        'r': results.map((e) => e.toJson()).toList(),
-        'c': confidence,
-        's': selfRating,
-      };
+    'd': date.toIso8601String(),
+    'r': results.map((e) => e.toJson()).toList(),
+    'c': confidence,
+    's': selfRating,
+  };
 
   factory Assessment.fromJson(Map<String, dynamic> j) => Assessment(
-        date: DateTime.parse(j['d'] as String),
-        results: (j['r'] as List).map((e) => PhraseResult.fromJson(e as Map<String, dynamic>)).toList(),
-        confidence: j['c'] as int,
-        selfRating: j['s'] as int,
-      );
+    date: DateTime.parse(j['d'] as String),
+    results: (j['r'] as List)
+        .map((e) => PhraseResult.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    confidence: j['c'] as int,
+    selfRating: j['s'] as int,
+  );
 }
 
 /// All app state, saved locally on the phone.
@@ -82,6 +92,9 @@ class AppState extends ChangeNotifier {
   String ageGroup = 'adult'; // under7 | 7to12 | teen | adult
   bool withTherapist = false;
   bool suddenOnset = false;
+
+  // real-life situations
+  final List<SituationLog> situationLogs = [];
 
   // word practice
   List<String> wordGroups = [];
@@ -108,11 +121,24 @@ class AppState extends ChangeNotifier {
       suddenOnset = j['sudden'] as bool? ?? false;
       wordGroups = ((j['wg'] as List?) ?? []).cast<String>();
       wordStep = j['ws'] as int? ?? 0;
+      situationLogs
+        ..clear()
+        ..addAll(
+          ((j['sit'] as List?) ?? []).map(
+            (e) => SituationLog.fromJson(e as Map<String, dynamic>),
+          ),
+        );
       final a = j['assess'];
-      assessment = a == null ? null : Assessment.fromJson(a as Map<String, dynamic>);
+      assessment = a == null
+          ? null
+          : Assessment.fromJson(a as Map<String, dynamic>);
       sessions
         ..clear()
-        ..addAll(((j['sessions'] as List?) ?? []).map((e) => SessionRecord.fromJson(e as Map<String, dynamic>)));
+        ..addAll(
+          ((j['sessions'] as List?) ?? []).map(
+            (e) => SessionRecord.fromJson(e as Map<String, dynamic>),
+          ),
+        );
     } catch (e) {
       debugPrint('store: could not read saved data: $e');
     }
@@ -122,22 +148,24 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     final p = _prefs ?? await SharedPreferences.getInstance();
     await p.setString(
-        _k,
-        jsonEncode({
-          'onboarded': onboarded,
-          'child': forChild,
-          'wait': waitTarget,
-          'remOn': reminderOn,
-          'remH': reminderHour,
-          'remM': reminderMinute,
-          'age': ageGroup,
-          'slp': withTherapist,
-          'sudden': suddenOnset,
-          'wg': wordGroups,
-          'ws': wordStep,
-          if (assessment != null) 'assess': assessment!.toJson(),
-          'sessions': sessions.map((s) => s.toJson()).toList(),
-        }));
+      _k,
+      jsonEncode({
+        'onboarded': onboarded,
+        'child': forChild,
+        'wait': waitTarget,
+        'remOn': reminderOn,
+        'remH': reminderHour,
+        'remM': reminderMinute,
+        'age': ageGroup,
+        'slp': withTherapist,
+        'sudden': suddenOnset,
+        'wg': wordGroups,
+        'ws': wordStep,
+        'sit': situationLogs.map((e) => e.toJson()).toList(),
+        if (assessment != null) 'assess': assessment!.toJson(),
+        'sessions': sessions.map((s) => s.toJson()).toList(),
+      }),
+    );
   }
 
   Future<void> reset() async {
@@ -149,6 +177,7 @@ class AppState extends ChangeNotifier {
     suddenOnset = false;
     wordGroups = [];
     wordStep = 0;
+    situationLogs.clear();
     assessment = null;
     sessions.clear();
     await save();
@@ -161,9 +190,13 @@ class AppState extends ChangeNotifier {
     sessions.add(s);
     final last = sessions.reversed.take(3).toList();
     if (last.length == 3 &&
-        last.every((x) => x.waitTarget == waitTarget && x.summary.pauseRatio >= 0.8) &&
+        last.every(
+          (x) => x.waitTarget == waitTarget && x.summary.pauseRatio >= 0.8,
+        ) &&
         waitTarget > minWait) {
-      waitTarget = double.parse((waitTarget - 0.2).clamp(minWait, maxWait).toStringAsFixed(1));
+      waitTarget = double.parse(
+        (waitTarget - 0.2).clamp(minWait, maxWait).toStringAsFixed(1),
+      );
     }
     await save();
   }
@@ -172,7 +205,8 @@ class AppState extends ChangeNotifier {
 
   static DateTime _day(DateTime d) => DateTime(d.year, d.month, d.day);
 
-  bool get practicedToday => sessions.any((s) => _day(s.date) == _day(DateTime.now()));
+  bool get practicedToday =>
+      sessions.any((s) => _day(s.date) == _day(DateTime.now()));
 
   SessionRecord? get todaySession {
     final today = _day(DateTime.now());
@@ -195,19 +229,30 @@ class AppState extends ChangeNotifier {
     return n;
   }
 
-  List<SessionRecord> sessionsBetween(DateTime from, DateTime to) =>
-      sessions.where((s) => !s.date.isBefore(from) && s.date.isBefore(to)).toList();
+  List<SessionRecord> sessionsBetween(DateTime from, DateTime to) => sessions
+      .where((s) => !s.date.isBefore(from) && s.date.isBefore(to))
+      .toList();
 
   /// Pause and soft-onset ratios for a window of days ending now.
-  ({double pause, double soft, int phrases}) ratios(int daysBack, {int offsetDays = 0}) {
+  ({double pause, double soft, int phrases}) ratios(
+    int daysBack, {
+    int offsetDays = 0,
+  }) {
     final end = DateTime.now().subtract(Duration(days: offsetDays));
-    final rs = sessionsBetween(end.subtract(Duration(days: daysBack)), end).expand((s) => s.results).toList();
+    final rs = sessionsBetween(
+      end.subtract(Duration(days: daysBack)),
+      end,
+    ).expand((s) => s.results).toList();
     final sum = SessionSummary.of(rs);
     return (pause: sum.pauseRatio, soft: sum.softRatio, phrases: sum.phrases);
   }
 
   int practiceDays(int daysBack) {
     final from = _day(DateTime.now()).subtract(Duration(days: daysBack - 1));
-    return sessions.where((s) => !s.date.isBefore(from)).map((s) => _day(s.date)).toSet().length;
+    return sessions
+        .where((s) => !s.date.isBefore(from))
+        .map((s) => _day(s.date))
+        .toSet()
+        .length;
   }
 }

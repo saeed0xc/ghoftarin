@@ -72,15 +72,24 @@ const passages = <Passage>[
   ),
 ];
 
-Passage passageById(String id) => passages.firstWhere((p) => p.id == id, orElse: () => passages.first);
+Passage passageById(String id) =>
+    passages.firstWhere((p) => p.id == id, orElse: () => passages.first);
 
 /// The passage used for the first assessment (neutral modern prose).
 const assessmentPassageId = 'morning';
 
 /// Today's passage: rotates by day, preferring the user's audience.
 Passage passageForDay(DateTime day, {required bool child}) {
-  final pool = passages.where((p) => p.audience == 'all' || p.audience == (child ? 'child' : 'adult')).toList();
-  final n = DateTime(day.year, day.month, day.day).difference(DateTime(2026, 1, 1)).inDays;
+  final pool = passages
+      .where(
+        (p) => p.audience == 'all' || p.audience == (child ? 'child' : 'adult'),
+      )
+      .toList();
+  final n = DateTime(
+    day.year,
+    day.month,
+    day.day,
+  ).difference(DateTime(2026, 1, 1)).inDays;
   return pool[n.abs() % pool.length];
 }
 
@@ -95,7 +104,10 @@ class Question {
 
 const confidenceQuestions = <Question>[
   Question('در جمع راحت صحبت می‌کنم.'),
-  Question('از ترس گیر کردن، کلمه‌ای را عوض می‌کنم یا حرفم را نمی‌زنم.', reverse: true),
+  Question(
+    'از ترس گیر کردن، کلمه‌ای را عوض می‌کنم یا حرفم را نمی‌زنم.',
+    reverse: true,
+  ),
   Question('تلفن جواب دادن یا تماس گرفتن برایم سخت است.', reverse: true),
   Question('وقتی حرف می‌زنم، به نظر شنونده اهمیت زیادی می‌دهم.', reverse: true),
   Question('حرف زدن با غریبه‌ها، مثل فروشنده، برایم آسان است.'),

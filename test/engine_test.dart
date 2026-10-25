@@ -108,4 +108,44 @@ void main() {
     expect(e.results.first.index, 0);
     expect(e.state, EngineState.pausing);
   });
+
+  test('ignores unvoiced noise bursts (clap, rustle) and a steady fan', () {
+    final rnd = math.Random(3);
+    final sr = 16000;
+    final out = <double>[];
+    void silence(double sec) {
+      for (var i = 0; i < (sec * sr).round(); i++) {
+        out.add((rnd.nextDouble() - 0.5) * 0.004);
+      }
+    }
+
+    void noiseBurst(double sec, double amp, {bool lowpass = false}) {
+      var y = 0.0;
+      for (var i = 0; i < (sec * sr).round(); i++) {
+        final x = (rnd.nextDouble() - 0.5) * 2;
+        y = lowpass ? y * 0.97 + x * 0.03 : x; // ~80 Hz one-pole low-pass for "fan"
+        out.add(y * (lowpass ? amp * 6 : amp));
+      }
+    }
+
+    silence(2.0);
+    noiseBurst(0.4, 0.3); // clap / rustle
+    silence(1.0);
+    noiseBurst(0.8, 0.3, lowpass: true); // rumble
+    silence(1.0);
+    final voiced = synth([
+      [2.2, 1.2, 200]
+    ], lead: 0);
+    out.addAll(voiced);
+
+    final results = <PhraseResult>[];
+    FluencyEngine.debugVoicing = true;
+    final e = FluencyEngine(syllables: const [8], onPhrase: results.add)..start();
+    e.addSamples(out);
+    FluencyEngine.debugVoicing = false;
+    expect(results.length, 1, reason: 'only the voiced phrase counts');
+    expect(results.first.onset, OnsetClass.soft);
+    expect(results.first.peak, greaterThan(0.3));
+    expect(results.first.endSec, greaterThan(results.first.startSec));
+  });
 }

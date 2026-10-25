@@ -18,6 +18,9 @@ import 'package:goftarin/screens/progress.dart';
 import 'package:goftarin/screens/guide.dart';
 import 'package:goftarin/screens/safety.dart';
 import 'package:goftarin/screens/words.dart';
+import 'package:goftarin/screens/situations.dart';
+import 'package:goftarin/screens/monologue.dart';
+import 'package:goftarin/data/situations.dart';
 import 'package:goftarin/theme.dart';
 import 'package:goftarin/widgets/visuals.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -157,4 +160,12 @@ void main() {
     final app = demoState()..wordGroups = ['p', 'a']..wordStep = 1;
     await shoot(t, WordsScreen(app: app), '7-words');
   });
+
+  testWidgets('situations', (t) async {
+    final app = demoState();
+    app.situationLogs.add(SituationLog(date: DateTime.now().subtract(const Duration(days: 4)), situationId: 'greet', anxietyBefore: 6, anxietyAfter: 3, severity: 3));
+    app.situationLogs.add(SituationLog(date: DateTime.now().subtract(const Duration(days: 3)), situationId: 'greet', anxietyBefore: 3, anxietyAfter: 2, severity: 2));
+    await shoot(t, SituationsScreen(app: app), '8-situations');
+  });
+  testWidgets('monologue', (t) async => shoot(t, MonologueScreen(app: demoState()), '9-monologue'));
 }

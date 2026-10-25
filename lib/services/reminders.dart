@@ -34,11 +34,21 @@ class Reminders {
   static Future<void> schedule(int hour, int minute) async {
     if (!supported) return;
     await init();
-    final android = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     await android?.requestNotificationsPermission();
     await _plugin.cancel(id: 1);
     final now = tz.TZDateTime.now(tz.local);
-    var at = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
+    var at = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      hour,
+      minute,
+    );
     if (!at.isAfter(now)) at = at.add(const Duration(days: 1));
     await _plugin.zonedSchedule(
       id: 1,
@@ -46,8 +56,12 @@ class Reminders {
       body: 'چند دقیقه خواندن با مکث و شروع نرم',
       scheduledDate: at,
       notificationDetails: const NotificationDetails(
-        android: AndroidNotificationDetails('daily', 'یادآوری روزانه',
-            channelDescription: 'یادآوری تمرین روزانه', importance: Importance.defaultImportance),
+        android: AndroidNotificationDetails(
+          'daily',
+          'یادآوری روزانه',
+          channelDescription: 'یادآوری تمرین روزانه',
+          importance: Importance.defaultImportance,
+        ),
         iOS: DarwinNotificationDetails(),
       ),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,

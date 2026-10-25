@@ -14,15 +14,19 @@ class Mic {
   Future<bool> ensurePermission() => _rec.hasPermission();
 
   Future<void> start(void Function(List<double> samples) onSamples) async {
-    final stream = await _rec.startStream(const RecordConfig(
-      encoder: AudioEncoder.pcm16bits,
-      sampleRate: 16000,
-      numChannels: 1,
-      autoGain: false,
-      echoCancel: false,
-      noiseSuppress: false,
-      androidConfig: AndroidRecordConfig(audioSource: AndroidAudioSource.voiceRecognition),
-    ));
+    final stream = await _rec.startStream(
+      const RecordConfig(
+        encoder: AudioEncoder.pcm16bits,
+        sampleRate: 16000,
+        numChannels: 1,
+        autoGain: false,
+        echoCancel: false,
+        noiseSuppress: false,
+        androidConfig: AndroidRecordConfig(
+          audioSource: AndroidAudioSource.voiceRecognition,
+        ),
+      ),
+    );
     _carry = -1;
     _sub = stream.listen((bytes) => onSamples(_toSamples(bytes)));
   }

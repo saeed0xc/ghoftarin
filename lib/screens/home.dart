@@ -8,6 +8,9 @@ import '../widgets/visuals.dart';
 import 'guide.dart';
 import 'practice.dart';
 import 'words.dart';
+import 'monologue.dart';
+import 'situations.dart';
+import '../data/situations.dart';
 import 'settings.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -25,72 +28,136 @@ class HomeScreen extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
         children: [
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(faDate(DateTime.now()), style: const TextStyle(fontSize: 13, color: C.muted)),
-                Text(done ? 'تمرین امروز انجام شد' : 'سلام! آماده‌ی تمرین امروز؟',
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-              ]),
-            ),
-            IconButton(
-              tooltip: 'راهنما',
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const GuideScreen())),
-              icon: const Icon(Icons.help_outline, color: C.muted),
-            ),
-            IconButton(
-              tooltip: 'تنظیمات',
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SettingsScreen(app: app))),
-              icon: const Icon(Icons.settings_outlined, color: C.muted),
-            ),
-          ]),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      faDate(DateTime.now()),
+                      style: const TextStyle(fontSize: 13, color: C.muted),
+                    ),
+                    Text(
+                      done
+                          ? 'تمرین امروز انجام شد'
+                          : 'سلام! آماده‌ی تمرین امروز؟',
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: 'راهنما',
+                onPressed: () => Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => const GuideScreen())),
+                icon: const Icon(Icons.help_outline, color: C.muted),
+              ),
+              IconButton(
+                tooltip: 'تنظیمات',
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => SettingsScreen(app: app)),
+                ),
+                icon: const Icon(Icons.settings_outlined, color: C.muted),
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
           if (app.streak > 0)
             Align(
               alignment: AlignmentDirectional.centerStart,
-              child: Chip2('${faNum(app.streak)} روز پیاپی', fg: C.warmDark, bg: C.warmBg),
+              child: Chip2(
+                '${faNum(app.streak)} روز پیاپی',
+                fg: C.warmDark,
+                bg: C.warmBg,
+              ),
             ),
           const SizedBox(height: 14),
           AppCard(
             padding: const EdgeInsets.all(20),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                const Text('جلسه‌ی امروز', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                Text('مکث هدف: ${faNum(app.waitTarget, 1)} ثانیه', style: const TextStyle(fontSize: 13, color: C.muted)),
-              ]),
-              const SizedBox(height: 14),
-              _step(done ? null : 1, 'خواندن کتاب: ${passage.title}', '${faNum(passage.phrases.length)} عبارت · مکث پیش از هر عبارت',
-                  done: done),
-              const SizedBox(height: 12),
-              _step(done ? null : 2, 'خودارزیابی روزانه', 'شدت لکنت امروز از ۰ تا ۹', done: done && app.todaySession?.selfRating != null),
-              const SizedBox(height: 12),
-              _step(3, 'گفت‌وگو با هم‌صحبت', 'در نسخه‌ی بعدی', muted: true),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: () => Navigator.of(context)
-                    .push(MaterialPageRoute(builder: (_) => PracticeScreen(app: app, passage: passage))),
-                child: Text(done ? 'یک جلسه‌ی دیگر' : 'شروع جلسه'),
-              ),
-            ]),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'جلسه‌ی امروز',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      'مکث هدف: ${faNum(app.waitTarget, 1)} ثانیه',
+                      style: const TextStyle(fontSize: 13, color: C.muted),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                _step(
+                  done ? null : 1,
+                  'خواندن کتاب: ${passage.title}',
+                  '${faNum(passage.phrases.length)} عبارت · مکث پیش از هر عبارت',
+                  done: done,
+                ),
+                const SizedBox(height: 12),
+                _step(
+                  done ? null : 2,
+                  'خودارزیابی روزانه',
+                  'شدت لکنت امروز از ۰ تا ۹',
+                  done: done && app.todaySession?.selfRating != null,
+                ),
+                const SizedBox(height: 12),
+                _step(3, 'گفت‌وگو با هم‌صحبت', 'در نسخه‌ی بعدی', muted: true),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          PracticeScreen(app: app, passage: passage),
+                    ),
+                  ),
+                  child: Text(done ? 'یک جلسه‌ی دیگر' : 'شروع جلسه'),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
-          InkWell(
-            borderRadius: BorderRadius.circular(20),
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => WordsScreen(app: app))),
-            child: AppCard(
-              child: Row(children: [
-                const CircleAvatar(radius: 20, backgroundColor: C.brandTint, child: Icon(Icons.record_voice_over_outlined, color: C.brandDark)),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Text('تمرین کلمه', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-                    Text(app.wordGroups.isEmpty ? 'روی صداهایی که برایت سخت‌ترند' : 'پله‌ی ${faNum(app.wordStep + 1)} از ۳',
-                        style: const TextStyle(fontSize: 12, color: C.muted)),
-                  ]),
-                ),
-                const Icon(Icons.chevron_left, color: C.muted),
-              ]),
-            ),
+          const Text(
+            'تمرین‌های بیشتر',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          _more(
+            context,
+            Icons.record_voice_over_outlined,
+            'تمرین کلمه',
+            app.wordGroups.isEmpty
+                ? 'روی صداهایی که برایت سخت‌ترند'
+                : 'پله‌ی ${faNum(app.wordStep + 1)} از ۳',
+            WordsScreen(app: app),
+          ),
+          const SizedBox(height: 8),
+          _more(
+            context,
+            Icons.forum_outlined,
+            'صحبت آزاد',
+            'یک یا سه دقیقه درباره‌ی یک موضوع',
+            MonologueScreen(app: app),
+          ),
+          const SizedBox(height: 8),
+          _more(
+            context,
+            Icons.storefront_outlined,
+            'موقعیت‌های واقعی',
+            'پیشنهاد امروز: ${nextSituation(app.situationLogs, DateTime.now()).title}',
+            SituationsScreen(app: app),
           ),
           if (app.needsTherapistNudge) ...[
             const SizedBox(height: 12),
@@ -98,71 +165,183 @@ class HomeScreen extends StatelessWidget {
               color: C.warmBg,
               border: false,
               padding: const EdgeInsets.fromLTRB(16, 12, 8, 6),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                const Text('گفتارین ابزار تمرین است، نه درمان. برای برنامه‌ی دقیق، دست‌کم یک بار با گفتاردرمانگر ارزیابی شو.',
-                    style: TextStyle(fontSize: 13, height: 1.8)),
-                Align(alignment: AlignmentDirectional.centerEnd, child: GuideLink(pageId: 'therapist', label: 'کی و چرا؟')),
-              ]),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'گفتارین ابزار تمرین است، نه درمان. برای برنامه‌ی دقیق، دست‌کم یک بار با گفتاردرمانگر ارزیابی شو.',
+                    style: TextStyle(fontSize: 13, height: 1.8),
+                  ),
+                  Align(
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: GuideLink(pageId: 'therapist', label: 'کی و چرا؟'),
+                  ),
+                ],
+              ),
             ),
           ],
           const SizedBox(height: 12),
           if (week.phrases > 0)
-            Row(children: [
-              Expanded(
+            Row(
+              children: [
+                Expanded(
                   child: StatTile(
-                      label: 'مکث کافی (۷ روز)', value: faPercent(week.pause), note: _delta(week.pause, prev.pause, prev.phrases))),
-              const SizedBox(width: 12),
-              Expanded(
+                    label: 'مکث کافی (۷ روز)',
+                    value: faPercent(week.pause),
+                    note: _delta(week.pause, prev.pause, prev.phrases),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
                   child: StatTile(
-                      label: 'شروع نرم (۷ روز)', value: faPercent(week.soft), note: _delta(week.soft, prev.soft, prev.phrases))),
-            ]),
+                    label: 'شروع نرم (۷ روز)',
+                    value: faPercent(week.soft),
+                    note: _delta(week.soft, prev.soft, prev.phrases),
+                  ),
+                ),
+              ],
+            ),
           if (week.phrases > 0) const SizedBox(height: 12),
           const AppCard(
             color: C.brandTint,
             border: false,
-            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Icon(Icons.graphic_eq, color: C.brandDark),
-              SizedBox(width: 12),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('تکنیک: شروع نرم', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-                  SizedBox(height: 2),
-                  Text('صدای اول کلمه را مثل یک بازدم آرام شروع کن؛ اول زمزمه، بعد کم‌کم بلند.',
-                      style: TextStyle(fontSize: 13, height: 1.7, color: Color(0xFF33454B))),
-                ]),
-              ),
-            ]),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.graphic_eq, color: C.brandDark),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'تکنیک: شروع نرم',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'صدای اول کلمه را مثل یک بازدم آرام شروع کن؛ اول زمزمه، بعد کم‌کم بلند.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          height: 1.7,
+                          color: Color(0xFF33454B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
+  Widget _more(
+    BuildContext context,
+    IconData icon,
+    String title,
+    String sub,
+    Widget page,
+  ) => InkWell(
+    borderRadius: BorderRadius.circular(20),
+    onTap: () =>
+        Navigator.of(context).push(MaterialPageRoute(builder: (_) => page)),
+    child: AppCard(
+      padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: C.brandTint,
+            child: Icon(icon, color: C.brandDark),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  sub,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, color: C.muted),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_left, color: C.muted),
+        ],
+      ),
+    ),
+  );
+
   String? _delta(double now, double before, int beforeCount) {
     if (beforeCount == 0) return null;
     final d = ((now - before) * 100).round();
     if (d == 0) return 'مثل هفته‌ی قبل';
-    return d > 0 ? '${faNum(d)}٪ بهتر از هفته‌ی قبل' : '${faNum(-d)}٪ کمتر از هفته‌ی قبل';
+    return d > 0
+        ? '${faNum(d)}٪ بهتر از هفته‌ی قبل'
+        : '${faNum(-d)}٪ کمتر از هفته‌ی قبل';
   }
 
-  Widget _step(int? n, String title, String sub, {bool done = false, bool muted = false}) {
+  Widget _step(
+    int? n,
+    String title,
+    String sub, {
+    bool done = false,
+    bool muted = false,
+  }) {
     final Widget badge = done
-        ? const CircleAvatar(radius: 16, backgroundColor: C.softBg, child: Icon(Icons.check, size: 18, color: C.softDark))
+        ? const CircleAvatar(
+            radius: 16,
+            backgroundColor: C.softBg,
+            child: Icon(Icons.check, size: 18, color: C.softDark),
+          )
         : CircleAvatar(
             radius: 16,
             backgroundColor: muted ? const Color(0xFFE9EDEA) : C.brand,
-            child: Text(faNum(n ?? 0),
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: muted ? C.muted : Colors.white)),
+            child: Text(
+              faNum(n ?? 0),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: muted ? C.muted : Colors.white,
+              ),
+            ),
           );
-    return Row(children: [
-      badge,
-      const SizedBox(width: 12),
-      Expanded(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: muted ? C.muted : C.ink)),
-          Text(sub, style: const TextStyle(fontSize: 12, color: C.muted)),
-        ]),
-      ),
-    ]);
+    return Row(
+      children: [
+        badge,
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: muted ? C.muted : C.ink,
+                ),
+              ),
+              Text(sub, style: const TextStyle(fontSize: 12, color: C.muted)),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }
