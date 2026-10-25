@@ -47,7 +47,6 @@ class _MonologueScreenState extends State<MonologueScreen> {
   int _topic = math.Random().nextInt(monologueTopics.length);
   double _pause = 0;
   bool _speaking = false;
-  bool _early = false;
   int _left = 0;
   Timer? _timer;
   final List<PhraseResult> _results = [];
@@ -100,7 +99,6 @@ class _MonologueScreenState extends State<MonologueScreen> {
         } else if (s == EngineState.speaking) {
           setState(() {
             _speaking = true;
-            _early = e < _wait;
             _pause = e;
           });
         }
@@ -202,40 +200,44 @@ class _MonologueScreenState extends State<MonologueScreen> {
   ];
 
   List<Widget> _running() {
-    final p = _speaking ? 1.0 : _pause / _wait;
-    final color = _speaking
-        ? (_early ? C.warn : C.soft)
-        : (p >= 1 ? C.soft : C.brand);
+    final p = _pause / _wait;
+    final mode = _speaking
+        ? OrbMode.speaking
+        : (p >= 1 ? OrbMode.ready : OrbMode.waiting);
+    final total = _minutes * 60;
     return [
       _topicCard(),
       const SizedBox(height: 16),
       Center(
-        child: BreathRing(
-          progress: p,
-          color: color,
-          label: _speaking
-              ? (_early ? '!' : '✓')
-              : (p >= 1 ? '✓' : faNum((_wait - _pause).clamp(0, 9), 1)),
-        ),
+        child: BreathOrb(progress: p, mode: mode),
       ),
       const SizedBox(height: 10),
       Center(
         child: Text(
-          _speaking
-              ? (_early ? 'کمی زود شروع کردی؛ جمله‌ی بعد با مکث' : 'ادامه بده…')
-              : (p >= 1 ? 'جمله‌ی بعد را نرم شروع کن' : 'مکث و نفس'),
+          switch (mode) {
+            OrbMode.speaking => 'ادامه بده…',
+            OrbMode.ready => 'هر وقت آماده‌ای، جمله‌ی بعد',
+            _ => 'یک نفس آرام…',
+          },
           style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w800,
-            color: _speaking && _early ? C.warn : C.ink,
+            color: mode == OrbMode.ready ? C.softDark : C.ink,
           ),
         ),
       ),
-      const SizedBox(height: 8),
-      Center(
-        child: Text(
-          '${faNum(_left ~/ 60)}:${faDigits((_left % 60).toString().padLeft(2, '0'))} · ${faNum(_results.length)} جمله',
-          style: const TextStyle(color: C.muted),
+      const SizedBox(height: 16),
+      // calm time bar instead of a ticking countdown
+      Semantics(
+        label: 'زمان صحبت',
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(3),
+          child: LinearProgressIndicator(
+            value: total == 0 ? 0 : (1 - _left / total).clamp(0.0, 1.0),
+            minHeight: 4,
+            color: C.brandSoft,
+            backgroundColor: C.line.withValues(alpha: 0.5),
+          ),
         ),
       ),
       const SizedBox(height: 16),

@@ -6,6 +6,7 @@ import '../fa.dart';
 import '../theme.dart';
 import '../widgets/visuals.dart';
 import 'guide.dart';
+import 'lessons.dart';
 import 'practice.dart';
 import 'words.dart';
 import 'monologue.dart';
@@ -22,6 +23,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final passage = passageForDay(DateTime.now(), child: app.forChild);
     final done = app.practicedToday;
+    final off = app.lessonsDone ? 0 : 1;
     final week = app.ratios(7);
     final prev = app.ratios(7, offsetDays: 7);
     return SafeArea(
@@ -100,30 +102,48 @@ class HomeScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 14),
+                if (!app.lessonsDone) ...[
+                  _step(
+                    1,
+                    'آموزش کوتاه (فقط بار اول)',
+                    'مکث و نفس، شروع نرم · ۳ دقیقه',
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 _step(
-                  done ? null : 1,
+                  done ? null : 1 + off,
                   'خواندن کتاب: ${passage.title}',
                   '${faNum(passage.phrases.length)} عبارت · مکث پیش از هر عبارت',
                   done: done,
                 ),
                 const SizedBox(height: 12),
                 _step(
-                  done ? null : 2,
+                  done ? null : 2 + off,
                   'خودارزیابی روزانه',
                   'شدت لکنت امروز از ۰ تا ۹',
                   done: done && app.todaySession?.selfRating != null,
                 ),
                 const SizedBox(height: 12),
-                _step(3, 'گفت‌وگو با هم‌صحبت', 'در نسخه‌ی بعدی', muted: true),
+                _step(
+                  3 + off,
+                  'گفت‌وگو با هم‌صحبت',
+                  'در نسخه‌ی بعدی',
+                  muted: true,
+                ),
                 const SizedBox(height: 16),
                 FilledButton(
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) =>
-                          PracticeScreen(app: app, passage: passage),
+                      builder: (_) => app.lessonsDone
+                          ? PracticeScreen(app: app, passage: passage)
+                          : LessonsScreen(app: app),
                     ),
                   ),
-                  child: Text(done ? 'یک جلسه‌ی دیگر' : 'شروع جلسه'),
+                  child: Text(
+                    !app.lessonsDone
+                        ? 'شروع آموزش'
+                        : (done ? 'یک جلسه‌ی دیگر' : 'شروع جلسه'),
+                  ),
                 ),
               ],
             ),
@@ -141,7 +161,9 @@ class HomeScreen extends StatelessWidget {
             app.wordGroups.isEmpty
                 ? 'روی صداهایی که برایت سخت‌ترند'
                 : 'پله‌ی ${faNum(app.wordStep + 1)} از ۳',
-            WordsScreen(app: app),
+            app.lessonsDone
+                ? WordsScreen(app: app)
+                : LessonsScreen(app: app, startPracticeAfter: false),
           ),
           const SizedBox(height: 8),
           _more(
@@ -149,7 +171,9 @@ class HomeScreen extends StatelessWidget {
             Icons.forum_outlined,
             'صحبت آزاد',
             'یک یا سه دقیقه درباره‌ی یک موضوع',
-            MonologueScreen(app: app),
+            app.lessonsDone
+                ? MonologueScreen(app: app)
+                : LessonsScreen(app: app, startPracticeAfter: false),
           ),
           const SizedBox(height: 8),
           _more(
@@ -202,40 +226,41 @@ class HomeScreen extends StatelessWidget {
               ],
             ),
           if (week.phrases > 0) const SizedBox(height: 12),
-          const AppCard(
-            color: C.brandTint,
-            border: false,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.graphic_eq, color: C.brandDark),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'تکنیک: شروع نرم',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
+          if (app.lessonsDone)
+            const AppCard(
+              color: C.brandTint,
+              border: false,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.graphic_eq, color: C.brandDark),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'تکنیک: شروع نرم',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'صدای اول کلمه را مثل یک بازدم آرام شروع کن؛ اول زمزمه، بعد کم‌کم بلند.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          height: 1.7,
-                          color: Color(0xFF33454B),
+                        SizedBox(height: 2),
+                        Text(
+                          'صدای اول کلمه را مثل یک بازدم آرام شروع کن؛ اول زمزمه، بعد کم‌کم بلند.',
+                          style: TextStyle(
+                            fontSize: 13,
+                            height: 1.7,
+                            color: Color(0xFF33454B),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
         ],
       ),
     );

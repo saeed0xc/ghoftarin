@@ -11,6 +11,7 @@ import '../widgets/self_rating.dart';
 import '../widgets/visuals.dart';
 import 'session_view.dart';
 import 'ss_counter.dart';
+import 'lessons.dart';
 
 /// First-use assessment: natural reading → confidence questions → self-rating → result.
 class AssessmentFlow extends StatefulWidget {
@@ -276,7 +277,7 @@ class _AssessmentFlowState extends State<AssessmentFlow> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'هر روز یک صفحه کتاب با مکث ${faNum(widget.app.waitTarget, 1)} ثانیه‌ای پیش از هر عبارت و شروع نرم. وقتی سه جلسه پشت سر هم مکث‌ها درست بود، زمان مکث کم‌کم کوتاه‌تر می‌شود تا طبیعی شود.',
+                  'اول یک آموزش کوتاه ۳ دقیقه‌ای: دو مهارت «مکث و نفس» و «شروع نرم» را یاد می‌گیری و امتحان می‌کنی. بعد هر روز یک صفحه کتاب با همین دو مهارت. اپ کم‌کم زمان مکث را کوتاه‌تر می‌کند تا طبیعی شود.',
                   style: const TextStyle(
                     fontSize: 13,
                     height: 1.8,
@@ -309,9 +310,21 @@ class _AssessmentFlowState extends State<AssessmentFlow> {
                   widget.app.reminderMinute,
                 ).catchError((Object e) => debugPrint('reminder: $e'));
               }
-              if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
+              if (!mounted) return;
+              if (first && !widget.app.lessonsDone) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(
+                    builder: (_) => LessonsScreen(app: widget.app),
+                  ),
+                  (r) => r.isFirst,
+                );
+              } else {
+                Navigator.of(context).popUntil((r) => r.isFirst);
+              }
             },
-            child: const Text('شروع برنامه'),
+            child: Text(
+              !widget.app.lessonsDone ? 'رفتن به آموزش کوتاه' : 'شروع برنامه',
+            ),
           ),
         ],
       ),

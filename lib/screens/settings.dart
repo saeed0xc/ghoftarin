@@ -6,6 +6,7 @@ import '../services/reminders.dart';
 import '../theme.dart';
 import 'assessment.dart';
 import 'guide.dart';
+import 'lessons.dart';
 
 class SettingsScreen extends StatefulWidget {
   final AppState app;
@@ -186,6 +187,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
+                  leading: const Icon(
+                    Icons.school_outlined,
+                    color: C.brandDark,
+                  ),
+                  title: const Text('تکرار آموزش کوتاه'),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          LessonsScreen(app: app, startPracticeAfter: false),
+                    ),
+                  ),
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.refresh, color: C.brandDark),
                   title: const Text('تکرار ارزیابی اولیه'),
                   onTap: () => Navigator.of(context).push(
@@ -237,7 +252,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'نسخه‌ی ۰٫۴ · آزمایشی · متن‌ها در حال بازبینی گفتاردرمانگر',
+            'نسخه‌ی ۰٫۵ · آزمایشی · متن‌ها در حال بازبینی گفتاردرمانگر',
             style: TextStyle(fontSize: 12, color: C.muted),
           ),
         ],

@@ -20,6 +20,7 @@ import 'package:goftarin/screens/safety.dart';
 import 'package:goftarin/screens/words.dart';
 import 'package:goftarin/screens/situations.dart';
 import 'package:goftarin/screens/monologue.dart';
+import 'package:goftarin/screens/lessons.dart';
 import 'package:goftarin/data/situations.dart';
 import 'package:goftarin/theme.dart';
 import 'package:goftarin/widgets/visuals.dart';
@@ -168,4 +169,8 @@ void main() {
     await shoot(t, SituationsScreen(app: app), '8-situations');
   });
   testWidgets('monologue', (t) async => shoot(t, MonologueScreen(app: demoState()), '9-monologue'));
+
+  testWidgets('lessons', (t) async {
+    await shoot(t, LessonsScreen(app: AppState()), '10-lessons');
+  });
 }

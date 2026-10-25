@@ -106,6 +106,10 @@ class AppState extends ChangeNotifier {
   // real-life situations
   final List<SituationLog> situationLogs = [];
 
+  /// The short technique lessons have been completed (shown before the
+  /// first practice session, so no technique is named before it is taught).
+  bool lessonsDone = false;
+
   // word practice
   List<String> wordGroups = [];
   int wordStep = 0; // ladder step 0..2
@@ -131,6 +135,7 @@ class AppState extends ChangeNotifier {
       suddenOnset = j['sudden'] as bool? ?? false;
       wordGroups = ((j['wg'] as List?) ?? []).cast<String>();
       wordStep = j['ws'] as int? ?? 0;
+      lessonsDone = j['lessons'] as bool? ?? false;
       situationLogs
         ..clear()
         ..addAll(
@@ -171,6 +176,7 @@ class AppState extends ChangeNotifier {
         'sudden': suddenOnset,
         'wg': wordGroups,
         'ws': wordStep,
+        'lessons': lessonsDone,
         'sit': situationLogs.map((e) => e.toJson()).toList(),
         if (assessment != null) 'assess': assessment!.toJson(),
         'sessions': sessions.map((s) => s.toJson()).toList(),
@@ -187,6 +193,7 @@ class AppState extends ChangeNotifier {
     suddenOnset = false;
     wordGroups = [];
     wordStep = 0;
+    lessonsDone = false;
     situationLogs.clear();
     assessment = null;
     sessions.clear();

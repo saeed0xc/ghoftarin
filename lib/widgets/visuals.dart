@@ -26,7 +26,7 @@ class BreathRing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
-    label: 'حلقه‌ی مکث',
+    label: 'نمودار حلقه',
     value: label == '✓' ? 'آماده' : (label == '!' ? 'زود شروع شد' : label),
     child: SizedBox(
       width: size,
@@ -275,4 +275,86 @@ class StatTile extends StatelessWidget {
       ],
     ),
   );
+}
+
+enum OrbMode { idle, waiting, ready, speaking }
+
+/// Calm pause visual: no numbers, no countdown. A soft circle slowly grows
+/// with the breath while the user pauses; when the pause is long enough it
+/// turns a quiet green. Nothing turns red.
+class BreathOrb extends StatelessWidget {
+  final double progress; // 0..1 of the pause target
+  final OrbMode mode;
+  final double size;
+  const BreathOrb({
+    super.key,
+    required this.progress,
+    required this.mode,
+    this.size = 176,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = progress.clamp(0.0, 1.0);
+    // ease in-out so the growth feels like a slow inhale
+    final eased = p < 0.5 ? 2 * p * p : 1 - (-2 * p + 2) * (-2 * p + 2) / 2;
+    final scale = switch (mode) {
+      OrbMode.idle => 0.5,
+      OrbMode.waiting => 0.5 + 0.5 * eased,
+      OrbMode.ready => 1.0,
+      OrbMode.speaking => 0.82,
+    };
+    final fill = switch (mode) {
+      OrbMode.ready => C.softBg,
+      OrbMode.speaking => C.brandTint,
+      _ => C.brandSoft,
+    };
+    final edge = switch (mode) {
+      OrbMode.ready => C.soft,
+      OrbMode.speaking => C.brand.withValues(alpha: 0.35),
+      _ => C.brand.withValues(alpha: 0.45),
+    };
+    return Semantics(
+      label: 'دایره‌ی نفس',
+      value: switch (mode) {
+        OrbMode.ready => 'آماده',
+        OrbMode.speaking => 'در حال صحبت',
+        _ => 'مکث',
+      },
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // faint outline of the full breath
+            Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: C.line, width: 1.5),
+              ),
+            ),
+            TweenAnimationBuilder<double>(
+              tween: Tween(end: scale),
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeOut,
+              builder: (context, s, child) => Container(
+                width: size * s,
+                height: size * s,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: fill,
+                  border: Border.all(color: edge, width: 2),
+                ),
+              ),
+            ),
+            if (mode == OrbMode.ready)
+              const Icon(Icons.check_rounded, color: C.softDark, size: 34),
+          ],
+        ),
+      ),
+    );
+  }
 }

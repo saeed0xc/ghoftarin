@@ -6,6 +6,7 @@ import '../fa.dart';
 import '../theme.dart';
 import 'practice.dart';
 import 'words.dart';
+import 'lessons.dart';
 
 /// All reading passages; any can be practised at any time.
 class LibraryScreen extends StatelessWidget {
@@ -36,8 +37,13 @@ class LibraryScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           FilledButton.icon(
-            onPressed: () => Navigator.of(context)
-                .push(MaterialPageRoute(builder: (_) => WordsScreen(app: app))),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => app.lessonsDone
+                    ? WordsScreen(app: app)
+                    : LessonsScreen(app: app, startPracticeAfter: false),
+              ),
+            ),
             icon: const Icon(Icons.record_voice_over_outlined),
             label: const Text('تمرین کلمه روی صداهای سخت'),
           ),
@@ -47,7 +53,9 @@ class LibraryScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => PracticeScreen(app: app, passage: p),
+                  builder: (_) => app.lessonsDone
+                      ? PracticeScreen(app: app, passage: p)
+                      : LessonsScreen(app: app, startPracticeAfter: false),
                 ),
               ),
               child: AppCard(

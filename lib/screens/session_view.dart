@@ -45,9 +45,6 @@ class _SessionViewState extends State<SessionView> {
   late FluencyEngine _engine;
   _Ui _ui = _Ui.intro;
   double _pause = 0;
-  bool _earlyNow = false;
-  DateTime _lastCue = DateTime.fromMillisecondsSinceEpoch(0);
-  bool _showEarlyText = false;
   PhraseResult? _last;
   final List<PhraseResult> _results = [];
   String? _notice; // microphone / room quality hint
@@ -126,8 +123,6 @@ class _SessionViewState extends State<SessionView> {
         if (changed) {
           setState(() {
             if (_ui != _Ui.pausing) {
-              _earlyNow = false;
-              _showEarlyText = false;
               _buzzed = elapsed >= widget.waitTarget;
             }
             _ui = _Ui.pausing;
@@ -135,15 +130,8 @@ class _SessionViewState extends State<SessionView> {
           });
         }
       case EngineState.speaking:
-        final early = widget.guided && elapsed < widget.waitTarget;
-        final now = DateTime.now();
-        // at most one spoken-style cue every 20 s (spec); the ring colour always shows
-        final showText = early && now.difference(_lastCue).inSeconds >= 20;
-        if (showText) _lastCue = now;
         setState(() {
           _ui = _Ui.speaking;
-          _earlyNow = early;
-          _showEarlyText = showText;
           _pause = elapsed;
         });
       case EngineState.done:
@@ -219,7 +207,10 @@ class _SessionViewState extends State<SessionView> {
                         children: [
                           Text(
                             widget.guided
-                                ? 'خواندن کتاب'
+                                ? (widget.passage.id.startsWith('lesson') ||
+                                          widget.passage.id.startsWith('words')
+                                      ? widget.passage.title
+                                      : 'خواندن کتاب')
                                 : 'ارزیابی: خواندن متن',
                             style: const TextStyle(
                               fontSize: 12,
@@ -338,7 +329,7 @@ class _SessionViewState extends State<SessionView> {
               const SizedBox(height: 8),
               Text(
                 widget.guided
-                    ? 'گوشی را جلوی خودت بگذار. پیش از هر عبارت صبر کن تا حلقه پر شود (${faNum(widget.waitTarget, 1)} ثانیه)، بعد عبارت پررنگ را با صدایی بسیار آرام شروع کن و بگذار کم‌کم بلند شود. بین عبارت‌ها ساکت بمان.'
+                    ? 'گوشی را جلوی خودت بگذار. پیش از هر عبارت، همراه با بزرگ شدن دایره یک نفس آرام بکش. وقتی سبز شد، هر وقت آماده بودی عبارت پررنگ را با شروع نرم بگو. عجله‌ای نیست؛ بین عبارت‌ها ساکت بمان.'
                     : 'متن را مثل همیشه و بدون تکنیک خاصی بلند بخوان. بین عبارت‌ها کمی مکث کن تا هر عبارت جدا شناخته شود. ابتدا چند لحظه سکوت لازم است.',
                 style: const TextStyle(
                   fontSize: 14,
@@ -372,18 +363,14 @@ class _SessionViewState extends State<SessionView> {
         );
       case _Ui.calibrating:
         return _ringCard(
-          ring: const BreathRing(progress: 0.15, label: '…'),
+          ring: const BreathOrb(progress: 0, mode: OrbMode.idle),
           title: 'چند لحظه سکوت…',
           hint: 'سطح صدای اتاق را اندازه می‌گیرم.',
         );
       case _Ui.pausing:
         if (!widget.guided) {
           return _ringCard(
-            ring: BreathRing(
-              progress: 0,
-              label: faNum(_index + 1),
-              color: C.brand,
-            ),
+            ring: const BreathOrb(progress: 0, mode: OrbMode.idle, size: 120),
             title: 'عبارت پررنگ را بخوان',
             hint: 'مثل همیشه بخوان.',
           );
@@ -391,32 +378,28 @@ class _SessionViewState extends State<SessionView> {
         final p = _pause / widget.waitTarget;
         final ready = p >= 1;
         return _ringCard(
-          ring: BreathRing(
+          ring: BreathOrb(
             progress: p,
-            color: ready ? C.soft : C.brand,
-            label: ready
-                ? '✓'
-                : faNum((widget.waitTarget - _pause).clamp(0, 9), 1),
+            mode: ready ? OrbMode.ready : OrbMode.waiting,
           ),
-          title: ready ? 'حالا آرام شروع کن' : 'نفس بکش و صبر کن',
+          title: ready ? 'هر وقت آماده‌ای' : 'یک نفس آرام…',
           titleColor: ready ? C.softDark : C.ink,
           hint: ready
-              ? 'صدای اول را خیلی آهسته بگو و بگذار کم‌کم بلند شود.'
-              : 'وقتی حلقه پر شد، عبارت پررنگ را آرام شروع کن.',
+              ? 'عبارت پررنگ را با صدایی آهسته شروع کن؛ عجله‌ای نیست.'
+              : 'همراه با بزرگ شدن دایره، آرام نفس بکش.',
           extra: _last == null ? null : _lastResult(_last!),
         );
       case _Ui.speaking:
+        // no warning while the person is speaking: interrupting attention
+        // mid-phrase adds pressure. The gentle note comes after the phrase.
         return _ringCard(
-          ring: BreathRing(
+          ring: BreathOrb(
             progress: 1,
-            color: !widget.guided ? C.brand : (_earlyNow ? C.warn : C.soft),
-            label: !widget.guided ? faNum(_index + 1) : (_earlyNow ? '!' : '✓'),
+            mode: OrbMode.speaking,
+            size: widget.guided ? 176 : 120,
           ),
-          title: _showEarlyText ? 'کمی زود شروع کردی' : 'ادامه بده…',
-          titleColor: _showEarlyText ? C.warn : C.ink,
-          hint: _showEarlyText
-              ? 'این عبارت را تمام کن؛ پیش از عبارت بعد صبر کن تا حلقه پر شود.'
-              : 'آرام و پیوسته.',
+          title: 'ادامه بده…',
+          hint: 'آرام و پیوسته.',
         );
       case _Ui.done:
         return const Center(
@@ -466,6 +449,9 @@ class _SessionViewState extends State<SessionView> {
       OnsetClass.medium => ('شروع متوسط', C.brand),
       OnsetClass.hard => ('شروع کمی ناگهانی بود', C.warm),
     };
+    final note = r.early
+        ? 'مکث کمی کوتاه بود؛ این بار دایره را تا آخر همراهی کن.'
+        : null;
     return Column(
       children: [
         const Divider(color: C.line, height: 1),
@@ -488,49 +474,11 @@ class _SessionViewState extends State<SessionView> {
         ),
         const SizedBox(height: 6),
         OnsetWave(values: r.onsetEnvelope, color: color, height: 44),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: _mini(
-                '${faNum(r.pauseSec, 1)} ث',
-                'مکث',
-                warn: widget.guided && r.early,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(child: _mini('${faNum(r.riseMs)} م‌ث', 'اوج‌گیری')),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _mini(
-                r.syllablesPerSec == null ? '—' : faNum(r.syllablesPerSec!, 1),
-                'هجا/ثانیه',
-              ),
-            ),
-          ],
-        ),
+        if (widget.guided && note != null) ...[
+          const SizedBox(height: 6),
+          Text(note, style: const TextStyle(fontSize: 12, color: C.warmDark)),
+        ],
       ],
     );
   }
-
-  Widget _mini(String v, String l, {bool warn = false}) => Container(
-    padding: const EdgeInsets.symmetric(vertical: 8),
-    decoration: BoxDecoration(
-      color: warn ? C.warnBg : C.bg,
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: Column(
-      children: [
-        Text(
-          v,
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w800,
-            color: warn ? C.warn : C.ink,
-          ),
-        ),
-        Text(l, style: const TextStyle(fontSize: 11, color: C.muted)),
-      ],
-    ),
-  );
 }
