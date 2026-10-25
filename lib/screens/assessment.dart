@@ -4,6 +4,7 @@ import '../audio/engine.dart';
 import '../data/content.dart';
 import '../data/store.dart';
 import '../fa.dart';
+import '../services/reminders.dart';
 import '../theme.dart';
 import '../widgets/self_rating.dart';
 import '../widgets/visuals.dart';
@@ -173,8 +174,13 @@ class _AssessmentFlowState extends State<AssessmentFlow> {
           const SizedBox(height: 20),
           FilledButton(
             onPressed: () async {
+              final first = !widget.app.onboarded;
               widget.app.onboarded = true;
               await widget.app.save();
+              if (first && widget.app.reminderOn) {
+                Reminders.schedule(widget.app.reminderHour, widget.app.reminderMinute)
+                    .catchError((Object e) => debugPrint('reminder: $e'));
+              }
               if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
             },
             child: const Text('شروع برنامه'),

@@ -30,24 +30,30 @@ android {
         versionName = flutter.versionName
     }
 
-    // Release signing: set GOFTARIN_KEYSTORE (path), GOFTARIN_KEYSTORE_PASSWORD and
-    // GOFTARIN_KEY_ALIAS. Without them the build falls back to the debug key.
+    // Release signing: GOFTARIN_KEYSTORE (path), GOFTARIN_KEYSTORE_PASSWORD and GOFTARIN_KEY_ALIAS
+    // select the private upload key (for store releases). Without them, test builds are
+    // signed with the committed test key, so each test build installs over the previous one.
     val ks = System.getenv("GOFTARIN_KEYSTORE")
+    val useUpload = ks != null && file(ks).exists()
     signingConfigs {
-        if (ks != null && file(ks).exists()) {
-            create("release") {
-                storeFile = file(ks)
+        create("release") {
+            if (useUpload) {
+                storeFile = file(ks!!)
                 storePassword = System.getenv("GOFTARIN_KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("GOFTARIN_KEY_ALIAS") ?: "goftarin"
                 keyPassword = System.getenv("GOFTARIN_KEYSTORE_PASSWORD")
+            } else {
+                storeFile = file("test-signing.jks")
+                storePassword = "goftarin-test"
+                keyAlias = "goftarin-test"
+                keyPassword = "goftarin-test"
             }
         }
     }
 
     buildTypes {
         release {
-            signingConfig = if (ks != null && file(ks).exists()) signingConfigs.getByName("release")
-                            else signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }

@@ -119,6 +119,15 @@ class _SessionViewState extends State<SessionView> {
     });
   }
 
+  void _redo() {
+    final r = _engine.undoLast();
+    if (r == null) return;
+    setState(() {
+      _results.removeLast();
+      _last = _results.isEmpty ? null : _results.last;
+    });
+  }
+
   Future<void> _finish() async {
     await _mic.stop();
     if (!mounted) return;
@@ -177,6 +186,12 @@ class _SessionViewState extends State<SessionView> {
             const SizedBox(height: 12),
             if (_ui == _Ui.intro || _ui == _Ui.noPermission)
               FilledButton(onPressed: _start, child: Text(_ui == _Ui.noPermission ? 'دوباره امتحان کن' : 'شروع')),
+            if (_ui == _Ui.pausing && _results.isNotEmpty)
+              OutlinedButton.icon(
+                onPressed: _redo,
+                icon: const Icon(Icons.replay),
+                label: const Text('عبارت قبلی را دوباره بخوانم'),
+              ),
           ],
         ),
       ),

@@ -39,7 +39,7 @@ class EngineConfig {
     this.hopMs = 10,
     this.calibrationMs = 1500,
     this.minOnMs = 50,
-    this.endMs = 600,
+    this.endMs = 900,
     this.minPhraseMs = 250,
     this.softMs = 150,
     this.hardMs = 90,
@@ -212,6 +212,16 @@ class FluencyEngine {
 
   void stop() {
     state = EngineState.idle;
+  }
+
+  /// Drops the last phrase (e.g. it was split by a long block, or the user
+  /// wants to read it again) and waits for that phrase again.
+  PhraseResult? undoLast() {
+    if (results.isEmpty) return null;
+    final r = results.removeLast();
+    phraseIndex = r.index;
+    if (state == EngineState.done || state == EngineState.pausing) _enterPause();
+    return r;
   }
 
   /// Total phrases expected; when reached the engine moves to [EngineState.done].

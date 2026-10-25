@@ -86,4 +86,26 @@ void main() {
     // 20 hops of 10 ms ramp -> 10..90% = 16 hops = 160 ms
     expect(riseTime(env, 10, 10, 0), closeTo(160, 12));
   });
+
+  test('undo the last phrase and read it again', () {
+    final results = <PhraseResult>[];
+    final e = FluencyEngine(syllables: const [8, 10], onPhrase: results.add)..start();
+    final a = synth([
+      [2.2, 1.2, 200],
+      [2.2, 1.2, 200],
+    ]);
+    // feed until the first phrase is done
+    var i = 0;
+    while (e.results.isEmpty) {
+      e.addSamples(a.sublist(i, i + 160));
+      i += 160;
+    }
+    expect(e.undoLast()?.index, 0);
+    expect(e.phraseIndex, 0);
+    e.addSamples(a.sublist(i));
+    // the second spoken phrase now counts as phrase 0 again
+    expect(e.results.length, 1);
+    expect(e.results.first.index, 0);
+    expect(e.state, EngineState.pausing);
+  });
 }
