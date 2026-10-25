@@ -12,6 +12,7 @@ class SessionRecord {
   final double waitTarget;
   final List<PhraseResult> results;
   int? selfRating; // 0..9, severity rating of the day (0 = no stuttering)
+  double? ssPercent; // %SS counted by a listener for this session
 
   SessionRecord({
     required this.date,
@@ -29,6 +30,7 @@ class SessionRecord {
     'w': waitTarget,
     'r': results.map((e) => e.toJson()).toList(),
     if (selfRating != null) 's': selfRating,
+    if (ssPercent != null) 'ss': ssPercent,
   };
 
   factory SessionRecord.fromJson(Map<String, dynamic> j) => SessionRecord(
@@ -39,7 +41,7 @@ class SessionRecord {
         .map((e) => PhraseResult.fromJson(e as Map<String, dynamic>))
         .toList(),
     selfRating: j['s'] as int?,
-  );
+  )..ssPercent = (j['ss'] as num?)?.toDouble();
 }
 
 class Assessment {
@@ -47,12 +49,16 @@ class Assessment {
   final List<PhraseResult> results;
   final int confidence; // 0..100
   final int selfRating; // 0..9
+  double? ssPercent; // %SS counted by a listener (the clinical standard)
+  String? ssRater; // self | parent | therapist
 
   Assessment({
     required this.date,
     required this.results,
     required this.confidence,
     required this.selfRating,
+    this.ssPercent,
+    this.ssRater,
   });
 
   SessionSummary get summary => SessionSummary.of(results);
@@ -62,6 +68,8 @@ class Assessment {
     'r': results.map((e) => e.toJson()).toList(),
     'c': confidence,
     's': selfRating,
+    if (ssPercent != null) 'ss': ssPercent,
+    if (ssRater != null) 'sr': ssRater,
   };
 
   factory Assessment.fromJson(Map<String, dynamic> j) => Assessment(
@@ -71,6 +79,8 @@ class Assessment {
         .toList(),
     confidence: j['c'] as int,
     selfRating: j['s'] as int,
+    ssPercent: (j['ss'] as num?)?.toDouble(),
+    ssRater: j['sr'] as String?,
   );
 }
 

@@ -17,7 +17,7 @@ class ProgressScreen extends StatefulWidget {
   State<ProgressScreen> createState() => _ProgressScreenState();
 }
 
-enum _Metric { pause, soft }
+enum _Metric { pause, soft, events }
 
 class _ProgressScreenState extends State<ProgressScreen> {
   _Metric _m = _Metric.pause;
@@ -85,6 +85,10 @@ class _ProgressScreenState extends State<ProgressScreen> {
                         value: _Metric.soft,
                         label: Text('شروع نرم'),
                       ),
+                      ButtonSegment(
+                        value: _Metric.events,
+                        label: Text('ناروانی'),
+                      ),
                     ],
                     selected: {_m},
                     showSelectedIcon: false,
@@ -93,12 +97,13 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   const SizedBox(height: 16),
                   _bars(recent),
                   const SizedBox(height: 8),
-                  Text(
-                    _m == _Metric.pause
-                        ? 'درصد عبارت‌هایی که پیش از شروع، به اندازه‌ی هدف مکث کردی (${faNum(recent.length)} جلسه‌ی اخیر).'
-                        : 'درصد عبارت‌هایی که با شروع نرم گفته شد (${faNum(recent.length)} جلسه‌ی اخیر).',
-                    style: const TextStyle(fontSize: 12, color: C.muted),
-                  ),
+                  Text(switch (_m) {
+                    _Metric.pause =>
+                      'درصد عبارت‌هایی که پیش از شروع، به اندازه‌ی هدف مکث کردی (${faNum(recent.length)} جلسه‌ی اخیر).',
+                    _Metric.soft =>
+                      'درصد عبارت‌هایی که با شروع نرم گفته شد (${faNum(recent.length)} جلسه‌ی اخیر).',
+                    _Metric.events => 'نشانه‌های احتمالی ناروانی در هر ۱۰۰ هجا، اندازه‌گیری خودکار و آزمایشی؛ کمتر بهتر است. جلسه‌های پرسروصدا خالی‌اند.',
+                  }, style: const TextStyle(fontSize: 12, color: C.muted)),
                 ],
               ),
             ),
@@ -151,6 +156,20 @@ class _ProgressScreenState extends State<ProgressScreen> {
                       faPercent(base.softRatio),
                       faPercent(allRecent.softRatio),
                     ),
+                    if (base.eventsPer100Syllables != null &&
+                        allRecent.eventsPer100Syllables != null)
+                      _compare(
+                        'ناروانی در ۱۰۰ هجا (آزمایشی)',
+                        faNum(base.eventsPer100Syllables!, 1),
+                        faNum(allRecent.eventsPer100Syllables!, 1),
+                      ),
+                    if (app.assessment?.ssPercent != null &&
+                        _lastSs(app) != null)
+                      _compare(
+                        'درصد هجاهای لکنت‌دار',
+                        '${faNum(app.assessment!.ssPercent!, 1)}٪',
+                        '${faNum(_lastSs(app)!, 1)}٪',
+                      ),
                     _compare(
                       'سرعت (هجا/ث)',
                       base.meanRate == null ? '—' : faNum(base.meanRate!, 1),
@@ -240,13 +259,23 @@ class _ProgressScreenState extends State<ProgressScreen> {
               child: LayoutBuilder(
                 builder: (context, box) {
                   final s = rs[i].summary;
-                  final v = _m == _Metric.pause ? s.pauseRatio : s.softRatio;
+                  final ev = s.eventsPer100Syllables;
+                  // events per 100 syllables, drawn against a 0..20 scale
+                  final v = switch (_m) {
+                    _Metric.pause => s.pauseRatio,
+                    _Metric.soft => s.softRatio,
+                    _Metric.events =>
+                      ev == null ? 0.0 : (ev / 20).clamp(0.0, 1.0),
+                  };
+                  final label = _m == _Metric.events
+                      ? (ev == null ? '—' : faNum(ev, 1))
+                      : faNum((v * 100).round());
                   final last = i == rs.length - 1;
                   return Column(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       Text(
-                        faNum((v * 100).round()),
+                        label,
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: last ? FontWeight.w700 : FontWeight.w400,
@@ -281,6 +310,13 @@ class _ProgressScreenState extends State<ProgressScreen> {
         ],
       ),
     );
+  }
+
+  double? _lastSs(AppState app) {
+    for (final s in app.sessions.reversed) {
+      if (s.ssPercent != null) return s.ssPercent;
+    }
+    return null;
   }
 
   Widget _compare(String label, String before, String now) => Padding(

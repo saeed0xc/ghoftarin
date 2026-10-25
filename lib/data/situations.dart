@@ -113,7 +113,8 @@ Situation nextSituation(List<SituationLog> logs, DateTime now) {
         ..sort((a, b) => avgAnxiety(a.id).compareTo(avgAnxiety(b.id)));
   // move on to a new situation once the easiest tried one feels manageable (≤ 3)
   final firstNew = situations.where((s) => !avgAnxiety(s.id).isFinite).toList();
-  if (tried.isNotEmpty && (avgAnxiety(tried.first.id) > 3 || firstNew.isEmpty)) {
+  if (tried.isNotEmpty &&
+      (avgAnxiety(tried.first.id) > 3 || firstNew.isEmpty)) {
     return tried.first;
   }
   if (firstNew.isNotEmpty) return firstNew.first;

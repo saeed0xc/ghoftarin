@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../audio/engine.dart';
+import '../audio/recording.dart';
 import '../data/content.dart';
 import '../data/store.dart';
 import '../fa.dart';
@@ -9,6 +10,7 @@ import '../theme.dart';
 import '../widgets/self_rating.dart';
 import '../widgets/visuals.dart';
 import 'session_view.dart';
+import 'ss_counter.dart';
 
 /// First-use assessment: natural reading → confidence questions → self-rating → result.
 class AssessmentFlow extends StatefulWidget {
@@ -25,6 +27,7 @@ class _AssessmentFlowState extends State<AssessmentFlow> {
   final List<int?> _answers = List.filled(confidenceQuestions.length, null);
   int? _rating;
   Assessment? _saved;
+  final _recording = SessionRecording();
 
   @override
   Widget build(BuildContext context) {
@@ -39,6 +42,7 @@ class _AssessmentFlowState extends State<AssessmentFlow> {
             _results = r;
             _step = 1;
           }),
+          recording: _recording,
         ),
         1 => _questions(),
         2 => _ratingStep(),
@@ -181,30 +185,15 @@ class _AssessmentFlowState extends State<AssessmentFlow> {
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _score(
-                  '${faNum(a.selfRating)} از ۹',
-                  'شدت لکنت (خودارزیابی)',
-                  a.selfRating / 9,
-                  C.brand,
-                  C.brandSoft,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _score(
-                  faNum(a.confidence),
-                  'راحتی در صحبت (از ۱۰۰)',
-                  a.confidence / 100,
-                  C.warm,
-                  const Color(0xFFF3E3D2),
-                ),
-              ),
-            ],
+          const Text(
+            'اندازه‌گیری از روی صدای تو',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
           ),
-          const SizedBox(height: 12),
+          const Text(
+            'عینی؛ از ضبط خواندن، روی همین گوشی',
+            style: TextStyle(fontSize: 12, color: C.muted),
+          ),
+          const SizedBox(height: 8),
           AppCard(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: Column(
@@ -222,10 +211,57 @@ class _AssessmentFlowState extends State<AssessmentFlow> {
                   s.meanRate == null
                       ? '—'
                       : '${faNum(s.meanRate!, 1)} هجا در ثانیه',
-                  last: true,
                 ),
+                _row(
+                  'نشانه‌های احتمالی ناروانی (آزمایشی)',
+                  s.eventsPer100Syllables == null
+                      ? 'محیط پرسروصدا بود'
+                      : '${faNum(s.eventsPer100Syllables!, 1)} در هر ۱۰۰ هجا',
+                ),
+                if (s.eventsPer100Syllables != null && s.events.total > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Text(
+                      'تکرار: ${faNum(s.events.repetitions)} · کشیدن صدا: ${faNum(s.events.prolongations)} · مکث درون عبارت: ${faNum(s.events.blocks)}',
+                      style: const TextStyle(fontSize: 12, color: C.muted),
+                    ),
+                  ),
+                _ssRow(a),
               ],
             ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'از نگاه خودت',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+          ),
+          const Text(
+            'خوداظهاری؛ احساس تو از صحبت کردن هم بخشی از وضعیت است',
+            style: TextStyle(fontSize: 12, color: C.muted),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _score(
+                  '${faNum(a.selfRating)} از ۹',
+                  'شدت لکنت',
+                  a.selfRating / 9,
+                  C.brand,
+                  C.brandSoft,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _score(
+                  faNum(a.confidence),
+                  'راحتی در صحبت (از ۱۰۰)',
+                  a.confidence / 100,
+                  C.warm,
+                  const Color(0xFFF3E3D2),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           AppCard(
@@ -276,6 +312,60 @@ class _AssessmentFlowState extends State<AssessmentFlow> {
               if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
             },
             child: const Text('شروع برنامه'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  int get _readSyllables {
+    final p = passageById(assessmentPassageId);
+    return _results.fold<int>(
+      0,
+      (a, r) => a + (r.index < p.syllables.length ? p.syllables[r.index] : 0),
+    );
+  }
+
+  Widget _ssRow(Assessment a) {
+    if (a.ssPercent != null) {
+      return _row(
+        'درصد هجاهای لکنت‌دار (شمارش ${raterNames[a.ssRater] ?? ''})',
+        '${faNum(a.ssPercent!, 1)}٪',
+        last: true,
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          const Expanded(
+            child: Text(
+              'درصد هجاهای لکنت‌دار: معیار استاندارد گفتاردرمانی؛ با گوش دادن به ضبط شمرده می‌شود.',
+              style: TextStyle(fontSize: 12, height: 1.7, color: C.muted),
+            ),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(minimumSize: const Size(72, 44)),
+            onPressed: _recording.lengthSamples == 0 || _readSyllables == 0
+                ? null
+                : () async {
+                    final r = await Navigator.of(context).push<SsResult>(
+                      MaterialPageRoute(
+                        builder: (_) => SsCounterScreen(
+                          recording: _recording,
+                          totalSyllables: _readSyllables,
+                          forChild: widget.app.forChild,
+                        ),
+                      ),
+                    );
+                    if (r == null) return;
+                    a.ssPercent = r.percent;
+                    a.ssRater = r.rater;
+                    await widget.app.save();
+                    if (mounted) setState(() {});
+                  },
+            child: const Text('شمارش'),
           ),
         ],
       ),

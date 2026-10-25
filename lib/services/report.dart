@@ -25,6 +25,12 @@ String buildTherapistReport(AppState app, {int days = 14}) {
       'مکث کافی: ${faPercent(all.pauseRatio)} · شروع نرم: ${faPercent(all.softRatio)}',
     )
     ..writeln(
+      all.eventsPer100Syllables == null
+          ? 'نشانه‌های احتمالی ناروانی (خودکار، آزمایشی): قابل اندازه‌گیری نبود'
+          : 'نشانه‌های احتمالی ناروانی (خودکار، آزمایشی): ${faNum(all.eventsPer100Syllables!, 1)} در هر ۱۰۰ هجا '
+                '(تکرار ${faNum(all.events.repetitions)}، کشیدن ${faNum(all.events.prolongations)}، مکث درون عبارت ${faNum(all.events.blocks)})',
+    )
+    ..writeln(
       'میانه‌ی مکث: ${faNum(all.medianPause, 1)} ثانیه'
       '${all.meanRate == null ? '' : ' · سرعت میانگین: ${faNum(all.meanRate!, 1)} هجا در ثانیه'}',
     );
@@ -39,6 +45,20 @@ String buildTherapistReport(AppState app, {int days = 14}) {
       )
       ..writeln(
         '  میانه‌ی مکث: ${faNum(s.medianPause, 1)} ث · شروع نرم: ${faPercent(s.softRatio)}',
+      );
+    if (a.ssPercent != null) {
+      b.writeln(
+        '  درصد هجاهای لکنت‌دار (%SS، شمارش با گوش دادن، ${a.ssRater ?? ''}): ${faNum(a.ssPercent!, 1)}٪',
+      );
+    }
+  }
+  final counted = ss.where((s) => s.ssPercent != null).toList();
+  if (counted.isNotEmpty) {
+    b
+      ..writeln()
+      ..writeln('درصد هجاهای لکنت‌دار در جلسه‌ها (شمارش با گوش دادن):')
+      ..writeln(
+        '  ${counted.map((s) => '${faDate(s.date).split(' ').skip(1).join(' ')}: ${faNum(s.ssPercent!, 1)}٪').join(' · ')}',
       );
   }
   final ratings = ss.where((s) => s.selfRating != null).toList();

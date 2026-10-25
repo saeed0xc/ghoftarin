@@ -13,6 +13,8 @@
 
 import 'dart:math' as math;
 
+import 'disfluency.dart';
+
 enum EngineState { idle, calibrating, pausing, speaking, done }
 
 enum OnsetClass { soft, medium, hard }
@@ -75,6 +77,10 @@ class PhraseResult {
   final double startSec; // position in the session audio (session only)
   final double endSec;
   final double peak; // max |sample| 0..1 during the phrase (session only)
+  final DisfluencyCounts disfluencies; // experimental acoustic estimate
+  /// Speech-to-noise ratio of the phrase was high enough (≥ 8×) for the
+  /// disfluency estimate; in noisy rooms speech breaks into fragments.
+  final bool disfluencyReliable;
 
   const PhraseResult({
     required this.index,
@@ -88,6 +94,8 @@ class PhraseResult {
     this.startSec = 0,
     this.endSec = 0,
     this.peak = 0,
+    this.disfluencies = DisfluencyCounts.zero,
+    this.disfluencyReliable = true,
   });
 
   Map<String, dynamic> toJson() => {
@@ -98,6 +106,13 @@ class PhraseResult {
     'o': onset.index,
     'd': _r(durationSec, 2),
     if (syllablesPerSec != null) 's': _r(syllablesPerSec!, 2),
+    if (!disfluencyReliable) 'u': true,
+    if (disfluencies.total > 0)
+      'f': [
+        disfluencies.repetitions,
+        disfluencies.prolongations,
+        disfluencies.blocks,
+      ],
   };
 
   factory PhraseResult.fromJson(Map<String, dynamic> j) => PhraseResult(
@@ -109,6 +124,14 @@ class PhraseResult {
     durationSec: (j['d'] as num).toDouble(),
     syllablesPerSec: (j['s'] as num?)?.toDouble(),
     onsetEnvelope: const [],
+    disfluencyReliable: j['u'] != true,
+    disfluencies: j['f'] == null
+        ? DisfluencyCounts.zero
+        : DisfluencyCounts(
+            (j['f'] as List)[0] as int,
+            (j['f'] as List)[1] as int,
+            (j['f'] as List)[2] as int,
+          ),
   );
 
   static double _r(double v, int d) {
@@ -224,6 +247,8 @@ class FluencyEngine {
   int _periodicHops = 0;
   int _speakHops = 0;
   late final List<double> _ordered = List<double>.filled(_win, 0);
+  int _lastLag = 0;
+  final List<HopInfo> _hopLog = []; // hops of the current phrase
 
   static bool debugVoicing = false;
 
@@ -327,12 +352,15 @@ class FluencyEngine {
         bestLag = lag;
       }
     }
+    _lastLag = 0;
     if (bestLag < 0 || best < 0.45) return false;
     var dip = 1.0;
     for (var lag = minLag; lag < bestLag; lag++) {
       if (r[lag] < dip) dip = r[lag];
     }
-    return dip < best - 0.25;
+    final voiced = dip < best - 0.25;
+    if (voiced) _lastLag = bestLag;
+    return voiced;
   }
 
   void _processHop(double v) {
@@ -366,10 +394,13 @@ class FluencyEngine {
             _phrasePeak = 0;
             _periodicHops = 0;
             _speakHops = 0;
+            _hopLog.clear();
           }
           if (_hopPeak > _phrasePeak) _phrasePeak = _hopPeak;
           _speakHops++;
-          if (_periodic()) _periodicHops++;
+          final per = _periodic();
+          if (per) _periodicHops++;
+          _hopLog.add(HopInfo(true, per, per ? _lastLag : 0, v));
           if ((h - _candHop + 1) * _hopMs >= config.minOnMs) _beginSpeech(h);
         } else {
           _candHop = -1;
@@ -382,7 +413,9 @@ class FluencyEngine {
           _voicedEndHop = h;
           _speakHops++;
           if (_hopPeak > _phrasePeak) _phrasePeak = _hopPeak;
-          if (_periodic()) _periodicHops++;
+          final per = _periodic();
+          if (per) _periodicHops++;
+          _hopLog.add(HopInfo(true, per, per ? _lastLag : 0, v));
           // a steady new noise (fan switched on, traffic) that never stops:
           // raise the noise floor and go back to waiting
           if ((h - _onsetHop) * _hopMs > 12000 &&
@@ -392,8 +425,9 @@ class FluencyEngine {
             _lastVoiceHop = h;
             _enterPause();
           }
-        } else if ((h - _voicedEndHop) * _hopMs > config.endMs) {
-          _endPhrase();
+        } else {
+          _hopLog.add(HopInfo(false, false, 0, v));
+          if ((h - _voicedEndHop) * _hopMs > config.endMs) _endPhrase();
         }
         return;
     }
@@ -434,6 +468,24 @@ class FluencyEngine {
     onState?.call(state, _hopsToSec(_onsetHop - _lastVoiceHop));
   }
 
+  double _speechToNoise() {
+    final e = [
+      for (final h in _hopLog)
+        if (h.on) h.energy,
+    ]..sort();
+    if (e.isEmpty || noise <= 0) return 0;
+    return e[e.length ~/ 2] / noise;
+  }
+
+  // hop log from the first to the last voiced hop of the phrase
+  List<HopInfo> _trimmedHopLog() {
+    var end = _hopLog.length;
+    while (end > 0 && !_hopLog[end - 1].on) {
+      end--;
+    }
+    return _hopLog.sublist(0, end);
+  }
+
   void _endPhrase() {
     final durHops = _voicedEndHop - _onsetHop + 1;
     // too short (cough, click) or never voiced (clap, door, rustle): ignore it
@@ -471,6 +523,8 @@ class FluencyEngine {
       startSec: _hopsToSec(_onsetHop) + config.windowMs / 1000,
       endSec: _hopsToSec(_voicedEndHop) + config.windowMs / 1000,
       peak: _phrasePeak,
+      disfluencies: detectDisfluencies(_trimmedHopLog(), hopMs: _hopMs),
+      disfluencyReliable: _speechToNoise() >= 8,
     );
     results.add(r);
     onPhrase?.call(r);
@@ -493,12 +547,20 @@ class SessionSummary {
   final double medianPause;
   final double? meanRate;
 
+  /// Experimental objective estimate: acoustic signs of disfluency per 100
+  /// syllables, over phrases with known syllable counts and enough
+  /// speech-to-noise. Null when there is nothing reliable to count.
+  final double? eventsPer100Syllables;
+  final DisfluencyCounts events;
+
   const SessionSummary({
     required this.phrases,
     required this.softCount,
     required this.pauseOkCount,
     required this.medianPause,
     required this.meanRate,
+    this.eventsPer100Syllables,
+    this.events = DisfluencyCounts.zero,
   });
 
   double get softRatio => phrases == 0 ? 0 : softCount / phrases;
@@ -516,7 +578,20 @@ class SessionSummary {
     }
     final pauses = rs.map((r) => r.pauseSec).toList()..sort();
     final rates = rs.map((r) => r.syllablesPerSec).whereType<double>().toList();
+    final countable = rs
+        .where((r) => r.disfluencyReliable && r.syllablesPerSec != null)
+        .toList();
+    final syl = countable.fold<double>(
+      0,
+      (a, r) => a + r.syllablesPerSec! * r.durationSec,
+    );
+    final ev = countable.fold<DisfluencyCounts>(
+      DisfluencyCounts.zero,
+      (a, r) => a + r.disfluencies,
+    );
     return SessionSummary(
+      eventsPer100Syllables: syl >= 20 ? ev.total * 100 / syl : null,
+      events: ev,
       phrases: rs.length,
       softCount: rs.where((r) => r.onset == OnsetClass.soft).length,
       pauseOkCount: rs.where((r) => !r.early).length,

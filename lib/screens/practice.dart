@@ -11,6 +11,7 @@ import '../widgets/playback.dart';
 import '../widgets/self_rating.dart';
 import '../widgets/visuals.dart';
 import 'session_view.dart';
+import 'ss_counter.dart';
 
 /// A practice session: guided reading → summary + daily self-rating → saved.
 class PracticeScreen extends StatefulWidget {
@@ -35,6 +36,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
   int? _rating;
   late final double _wait = widget.overrideWait ?? widget.app.waitTarget;
   final _recording = SessionRecording();
+  SsResult? _ss;
 
   @override
   Widget build(BuildContext context) {
@@ -149,6 +151,8 @@ class _PracticeScreenState extends State<PracticeScreen> {
             results: rs,
             phrases: widget.passage.phrases,
           ),
+          const SizedBox(height: 8),
+          _objectiveCard(s),
           if (needRating) ...[
             const SizedBox(height: 12),
             AppCard(
@@ -209,6 +213,64 @@ class _PracticeScreenState extends State<PracticeScreen> {
     );
   }
 
+  Widget _objectiveCard(SessionSummary s) {
+    final syl = _results!.fold<int>(
+      0,
+      (a, r) =>
+          a +
+          (r.index < widget.passage.syllables.length
+              ? widget.passage.syllables[r.index]
+              : 0),
+    );
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'اندازه‌گیری لکنت',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            s.eventsPer100Syllables == null
+                ? 'نشانه‌های احتمالی ناروانی: محیط برای اندازه‌گیری پرسروصدا بود.'
+                : 'نشانه‌های احتمالی ناروانی (آزمایشی): ${faNum(s.eventsPer100Syllables!, 1)} در هر ۱۰۰ هجا',
+            style: const TextStyle(fontSize: 13, height: 1.8),
+          ),
+          if (_ss != null)
+            Text(
+              'درصد هجاهای لکنت‌دار (شمارش ${raterNames[_ss!.rater]}): ${faNum(_ss!.percent, 1)}٪',
+              style: const TextStyle(
+                fontSize: 13,
+                height: 1.8,
+                fontWeight: FontWeight.w700,
+              ),
+            )
+          else if (syl > 0 && _recording.lengthSamples > 0)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                onPressed: () async {
+                  final r = await Navigator.of(context).push<SsResult>(
+                    MaterialPageRoute(
+                      builder: (_) => SsCounterScreen(
+                        recording: _recording,
+                        totalSyllables: syl,
+                        forChild: widget.app.forChild,
+                      ),
+                    ),
+                  );
+                  if (r != null && mounted) setState(() => _ss = r);
+                },
+                icon: const Icon(Icons.touch_app_outlined),
+                label: const Text('شمارش درصد هجاهای لکنت‌دار (اختیاری)'),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _save() async {
     final rec = SessionRecord(
       date: DateTime.now(),
@@ -216,7 +278,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
       waitTarget: _wait,
       results: _results!,
       selfRating: _rating,
-    );
+    )..ssPercent = _ss?.percent;
     final before = widget.app.waitTarget;
     await widget.app.addSession(rec);
     if (!mounted) return;
