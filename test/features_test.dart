@@ -40,7 +40,7 @@ void main() {
     final rushed = SessionSummary.of([for (var i = 0; i < 7; i++) r(i, pause: 0.8)]);
     final f = sessionFeedback(rushed, seed: 1);
     expect(f.suggestSlowRound, true);
-    expect(f.tip, contains('حلقه'));
+    expect(f.tip, contains('دایره'));
     final hard = SessionSummary.of([for (var i = 0; i < 7; i++) r(i, rise: 40)]);
     expect(sessionFeedback(hard, seed: 2).tip, contains('هوا'));
   });
