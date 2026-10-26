@@ -46,7 +46,9 @@ jobs:
           fi
 
       - name: App version
-        run: echo "VER=$(grep '^version:' pubspec.yaml | sed 's/version: //; s/+.*//')" >> $GITHUB_ENV
+        run: |
+          VER=$(grep '^version:' pubspec.yaml | sed 's/version: //; s/+.*//')
+          echo "VER=$VER" >> "$GITHUB_ENV"
 
       - name: Build APK
         env:
