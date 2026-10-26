@@ -44,8 +44,41 @@ void main() {
   test('guide pages have unique ids', () {
     final ids = guidePages.map((p) => p.id).toList();
     expect(ids.toSet().length, ids.length);
-    for (final id in ['pause', 'soft', 'contact', 'continuous', 'therapist', 'parents']) {
+    for (final id in [
+      'pause',
+      'soft',
+      'contact',
+      'continuous',
+      'therapist',
+      'parents',
+    ]) {
       expect(ids.contains(id), true, reason: id);
     }
+  });
+
+  test('hand-counted syllables are plausible for every passage', () {
+    for (final p in [...passages, slowPassage]) {
+      expect(p.syllables.length, p.phrases.length, reason: p.id);
+      for (var i = 0; i < p.phrases.length; i++) {
+        final letters = p.phrases[i]
+            .replaceAll(RegExp(r'[\s\u200c.،؛:!؟?«»]'), '')
+            .length;
+        final perSyl = letters / p.syllables[i];
+        expect(
+          perSyl,
+          inInclusiveRange(1.3, 3.6),
+          reason: '${p.id} #$i: ${p.phrases[i]}',
+        );
+      }
+    }
+  });
+
+  test('daily reading rotates through at least five texts for adults', () {
+    final seen = {
+      for (var d = 0; d < 14; d++)
+        passageForDay(DateTime(2026, 10, 1 + d), child: false).id,
+    };
+    expect(seen.length, greaterThanOrEqualTo(5));
+    expect(seen.contains('pishi'), isFalse);
   });
 }

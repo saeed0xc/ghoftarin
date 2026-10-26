@@ -9,6 +9,7 @@ import '../data/store.dart';
 import '../fa.dart';
 import '../theme.dart';
 import '../widgets/visuals.dart';
+import 'plan_runner.dart';
 import 'practice.dart';
 import 'session_view.dart';
 
@@ -100,9 +101,11 @@ class _LessonsScreenState extends State<LessonsScreen> {
     if (widget.startPracticeAfter) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
+          // first step of stage 1: the slow round, with the long pause
           builder: (_) => PracticeScreen(
             app: widget.app,
-            passage: passageForDay(DateTime.now(), child: widget.app.forChild),
+            passage: slowPassage,
+            overrideWait: slowWait(widget.app),
           ),
         ),
       );

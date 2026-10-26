@@ -13,7 +13,9 @@ Set<int> cmapOf(String path) {
   var cmap = -1;
   for (var i = 0; i < numTables; i++) {
     final rec = 12 + i * 16;
-    if (String.fromCharCodes(b.sublist(rec, rec + 4)) == 'cmap') cmap = u32(rec + 8);
+    if (String.fromCharCodes(b.sublist(rec, rec + 4)) == 'cmap') {
+      cmap = u32(rec + 8);
+    }
   }
   final out = <int>{};
   final n = u16(cmap + 2);
@@ -36,8 +38,12 @@ void main() {
   test('UI text is covered by Vazirmatn', () {
     final cmap = cmapOf('assets/fonts/Vazirmatn-Regular.ttf');
     final missing = <String, Set<String>>{};
-    for (final f in Directory('lib').listSync(recursive: true).whereType<File>()) {
-      if (!f.path.endsWith('.dart') || f.path.endsWith('report.dart')) continue; // report is shared as plain text
+    for (final f in Directory(
+      'lib',
+    ).listSync(recursive: true).whereType<File>()) {
+      if (!f.path.endsWith('.dart') || f.path.endsWith('report.dart')) {
+        continue; // report is shared as plain text
+      }
       for (final m in RegExp(r"'([^'\n]*)'").allMatches(f.readAsStringSync())) {
         for (final r in m.group(1)!.runes) {
           if (r > 127 && r != 0x2713 && !cmap.contains(r)) {

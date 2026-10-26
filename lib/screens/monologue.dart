@@ -10,6 +10,7 @@ import '../audio/mic.dart';
 import '../audio/recording.dart';
 import '../data/store.dart';
 import '../fa.dart';
+import '../services/coach.dart';
 import '../theme.dart';
 import '../widgets/playback.dart';
 import '../widgets/visuals.dart';
@@ -18,7 +19,10 @@ import '../widgets/visuals.dart';
 /// of the Camperdown Program): the step from reading to spontaneous speech.
 class MonologueScreen extends StatefulWidget {
   final AppState app;
-  const MonologueScreen({super.key, required this.app});
+
+  /// Preset length from the daily plan; the user can still change it.
+  final int? minutes;
+  const MonologueScreen({super.key, required this.app, this.minutes});
 
   @override
   State<MonologueScreen> createState() => _MonologueScreenState();
@@ -37,13 +41,14 @@ const monologueTopics = [
 
 enum _M { setup, calibrating, running, done }
 
-class _MonologueScreenState extends State<MonologueScreen> {
+class _MonologueScreenState extends State<MonologueScreen>
+    with WidgetsBindingObserver {
   Mic? _micOrNull; // created on start, so opening the screen does not touch the microphone
   Mic get _mic => _micOrNull ??= Mic();
   final _rec = SessionRecording();
   late FluencyEngine _engine;
   _M _m = _M.setup;
-  int _minutes = 1;
+  late int _minutes = widget.minutes ?? 1;
   int _topic = math.Random().nextInt(monologueTopics.length);
   double _pause = 0;
   bool _speaking = false;
@@ -54,7 +59,24 @@ class _MonologueScreenState extends State<MonologueScreen> {
   double get _wait => widget.app.waitTarget;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    Coach.of(widget.app).say('talk_intro');
+  }
+
+  /// A phone call or leaving the app ends the talk early and keeps what was
+  /// said, rather than timing silence.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState s) {
+    if (s == AppLifecycleState.paused || s == AppLifecycleState.hidden) {
+      _finish();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     _micOrNull?.dispose();
     WakelockPlus.disable().catchError((_) {});
@@ -62,6 +84,7 @@ class _MonologueScreenState extends State<MonologueScreen> {
   }
 
   Future<void> _start() async {
+    await Coach.stop();
     if (!await _mic.ensurePermission()) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -113,10 +136,23 @@ class _MonologueScreenState extends State<MonologueScreen> {
   }
 
   Future<void> _finish() async {
+    if (_m == _M.done || _m == _M.setup) return;
+    _m = _M.done; // guards against the timer and the button both finishing
     _timer?.cancel();
     await _mic.stop();
     WakelockPlus.disable().catchError((_) {});
-    if (mounted) setState(() => _m = _M.done);
+    if (_results.isNotEmpty) {
+      await widget.app.addSession(
+        SessionRecord(
+          date: DateTime.now(),
+          passageId: 'talk',
+          waitTarget: _wait,
+          results: List.of(_results),
+          kind: Kind.talk,
+        ),
+      );
+    }
+    if (mounted) setState(() {});
   }
 
   @override

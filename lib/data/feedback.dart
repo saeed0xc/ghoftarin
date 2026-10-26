@@ -17,7 +17,11 @@ class SessionFeedback {
 String _pick(List<String> options, int seed) =>
     options[seed.abs() % options.length];
 
-SessionFeedback sessionFeedback(SessionSummary s, {required int seed}) {
+SessionFeedback sessionFeedback(
+  SessionSummary s, {
+  required int seed,
+  bool slow = false,
+}) {
   if (s.phrases == 0) {
     return const SessionFeedback(
       'عبارتی شنیده نشد',
@@ -32,11 +36,13 @@ SessionFeedback sessionFeedback(SessionSummary s, {required int seed}) {
         'یک جلسه‌ی خیلی خوب',
         'آرام و کنترل‌شده؛ همین است',
       ], seed),
-      _pick([
-        'حالا همین آرامش را امروز در یک گفت‌وگوی کوتاه واقعی امتحان کن.',
-        'اگر سه جلسه پشت سر هم همین‌طور باشد، زمان مکث خودش کوتاه‌تر می‌شود.',
-        'یک بار ضبط را گوش کن و ببین کدام شروع از همه نرم‌تر بود.',
-      ], seed),
+      slow
+          ? 'تکنیک را حس کردی. چند روز دیگر همین دور آهسته را تکرار کن تا خودکار شود؛ برنامه خودش می‌گوید کی وقت قدم بعد است.'
+          : _pick([
+              'حالا همین آرامش را امروز در یک گفت‌وگوی کوتاه واقعی امتحان کن.',
+              'اگر سه جلسه پشت سر هم همین‌طور باشد، زمان مکث خودش کوتاه‌تر می‌شود.',
+              'یک بار ضبط را گوش کن و ببین کدام شروع از همه نرم‌تر بود.',
+            ], seed),
     );
   }
   if (pause < 0.6 && soft >= 0.6) {

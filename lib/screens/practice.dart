@@ -6,6 +6,7 @@ import '../data/content.dart';
 import '../data/feedback.dart';
 import '../data/store.dart';
 import '../fa.dart';
+import '../services/coach.dart';
 import '../theme.dart';
 import '../widgets/playback.dart';
 import '../widgets/self_rating.dart';
@@ -39,6 +40,23 @@ class _PracticeScreenState extends State<PracticeScreen> {
   SsResult? _ss;
 
   @override
+  void initState() {
+    super.initState();
+    Coach.of(widget.app)
+        .say(widget.overrideWait != null ? 'slow_intro' : 'session_intro');
+  }
+
+  void _finished(List<PhraseResult> r) {
+    setState(() => _results = r);
+    final s = SessionSummary.of(r);
+    if (s.phrases == 0) return;
+    final good = s.softRatio >= 0.8 && s.pauseRatio >= 0.8;
+    final hard = s.softRatio < 0.5 || s.pauseRatio < 0.5;
+    Coach.of(widget.app)
+        .say(good ? 'session_good' : (hard ? 'session_hard' : 'session_ok'));
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: _results == null
@@ -47,7 +65,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
               waitTarget: _wait,
               guided: true,
               onClose: () => Navigator.of(context).pop(),
-              onFinished: (r) => setState(() => _results = r),
+              onFinished: _finished,
               recording: _recording,
             )
           : _summary(),
@@ -58,7 +76,11 @@ class _PracticeScreenState extends State<PracticeScreen> {
     final rs = _results!;
     final s = SessionSummary.of(rs);
     final needRating = widget.app.todaySession?.selfRating == null;
-    final fb = sessionFeedback(s, seed: widget.app.sessions.length);
+    final fb = sessionFeedback(
+      s,
+      seed: widget.app.sessions.length,
+      slow: widget.overrideWait != null,
+    );
     final slowRound = widget.overrideWait != null;
     return SafeArea(
       child: ListView(
@@ -278,6 +300,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
       waitTarget: _wait,
       results: _results!,
       selfRating: _rating,
+      kind: widget.overrideWait != null ? Kind.slow : Kind.read,
     )..ssPercent = _ss?.percent;
     final before = widget.app.waitTarget;
     await widget.app.addSession(rec);

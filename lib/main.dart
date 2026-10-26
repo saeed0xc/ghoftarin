@@ -6,7 +6,6 @@ import 'screens/home.dart';
 import 'screens/library.dart';
 import 'screens/onboarding.dart';
 import 'screens/progress.dart';
-import 'screens/talk.dart';
 import 'services/reminders.dart';
 import 'theme.dart';
 
@@ -64,9 +63,8 @@ class _ShellState extends State<Shell> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      HomeScreen(app: widget.app, openTalk: () => setState(() => _tab = 2)),
+      HomeScreen(app: widget.app),
       LibraryScreen(app: widget.app),
-      const TalkScreen(),
       ProgressScreen(app: widget.app),
     ];
     return Scaffold(
@@ -76,19 +74,14 @@ class _ShellState extends State<Shell> {
         onDestinationSelected: (i) => setState(() => _tab = i),
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'خانه',
+            icon: Icon(Icons.today_outlined),
+            selectedIcon: Icon(Icons.today),
+            label: 'امروز',
           ),
           NavigationDestination(
-            icon: Icon(Icons.menu_book_outlined),
-            selectedIcon: Icon(Icons.menu_book),
-            label: 'کتاب',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.chat_bubble_outline),
-            selectedIcon: Icon(Icons.chat_bubble),
-            label: 'گفت‌وگو',
+            icon: Icon(Icons.grid_view_outlined),
+            selectedIcon: Icon(Icons.grid_view),
+            label: 'تمرین‌ها',
           ),
           NavigationDestination(
             icon: Icon(Icons.bar_chart_outlined),

@@ -4,6 +4,7 @@ import '../audio/engine.dart';
 import '../data/store.dart';
 import '../data/words.dart';
 import '../fa.dart';
+import '../services/coach.dart';
 import '../theme.dart';
 import '../widgets/visuals.dart';
 import 'guide.dart';
@@ -194,6 +195,7 @@ class _WordsScreenState extends State<WordsScreen> {
     if (!mounted) return;
     final passage = ladderStep(app.wordGroups, step);
     final wait = app.waitTarget < 1.5 ? app.waitTarget : 1.5;
+    Coach.of(app).say('words_intro');
     final results = await Navigator.of(context).push<List<PhraseResult>>(
       MaterialPageRoute(
         builder: (ctx) => Scaffold(
@@ -208,6 +210,16 @@ class _WordsScreenState extends State<WordsScreen> {
       ),
     );
     if (results == null || !mounted) return;
+    await app.addSession(
+      SessionRecord(
+        date: DateTime.now(),
+        passageId: passage.id,
+        waitTarget: wait,
+        results: results,
+        kind: Kind.words,
+      ),
+    );
+    if (!mounted) return;
     final s = SessionSummary.of(results);
     final passed = s.phrases > 0 && s.softRatio >= 0.8;
     if (passed && step == app.wordStep && app.wordStep < 2) {

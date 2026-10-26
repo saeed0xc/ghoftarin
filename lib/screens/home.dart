@@ -1,56 +1,41 @@
 import 'package:flutter/material.dart';
 
-import '../data/content.dart';
+import '../data/program.dart';
 import '../data/store.dart';
 import '../fa.dart';
 import '../theme.dart';
 import '../widgets/visuals.dart';
 import 'guide.dart';
-import 'lessons.dart';
-import 'practice.dart';
-import 'words.dart';
-import 'monologue.dart';
-import 'situations.dart';
-import '../data/situations.dart';
+import 'plan_runner.dart';
+import 'program_screen.dart';
 import 'settings.dart';
 
+/// Today: the user's stage, today's plan and one button. The app decides
+/// what to practise; the user only has to start.
 class HomeScreen extends StatelessWidget {
   final AppState app;
-  final VoidCallback openTalk;
-  const HomeScreen({super.key, required this.app, required this.openTalk});
+  const HomeScreen({super.key, required this.app});
 
   @override
   Widget build(BuildContext context) {
-    final passage = passageForDay(DateTime.now(), child: app.forChild);
-    final done = app.practicedToday;
-    final off = app.lessonsDone ? 0 : 1;
+    final plan = todayPlan(app);
+    final next = plan.where((s) => !s.done).firstOrNull;
+    final left = planMinutes(plan);
     final week = app.ratios(7);
     final prev = app.ratios(7, offsetDays: 7);
+    final crit = criteria(app);
+    final stage = stageInfo(app.stage);
+
     return SafeArea(
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      faDate(DateTime.now()),
-                      style: const TextStyle(fontSize: 13, color: C.muted),
-                    ),
-                    Text(
-                      done
-                          ? 'تمرین امروز انجام شد'
-                          : 'سلام! آماده‌ی تمرین امروز؟',
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  faDate(DateTime.now()),
+                  style: const TextStyle(fontSize: 13, color: C.muted),
                 ),
               ),
               IconButton(
@@ -69,248 +54,165 @@ class HomeScreen extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          if (app.streak > 0)
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: Chip2(
-                '${faNum(app.streak)} روز پیاپی',
-                fg: C.warmDark,
-                bg: C.warmBg,
-              ),
+          Text(
+            next == null ? 'تمرین امروز کامل شد' : 'برنامه‌ی امروز',
+            style: const TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              height: 1.4,
             ),
-          const SizedBox(height: 14),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            next == null
+                ? 'فردا برنامه‌ی تازه‌ای آماده است.'
+                : 'حدود ${faNum(left)} دقیقه · ${faNum(plan.where((s) => s.done).length)} از ${faNum(plan.length)} قدم انجام شده',
+            style: const TextStyle(fontSize: 14, color: C.muted),
+          ),
+          const SizedBox(height: 16),
+
+          // ---- the plan ----
           AppCard(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'جلسه‌ی امروز',
-                      style: TextStyle(
-                        fontSize: 18,
+                for (var i = 0; i < plan.length; i++) ...[
+                  _StepRow(
+                    n: i + 1,
+                    step: plan[i],
+                    current: identical(plan[i], next),
+                    onTap: () => runStep(context, app, plan[i]),
+                  ),
+                  if (i < plan.length - 1) const SizedBox(height: 4),
+                ],
+                const SizedBox(height: 14),
+                if (next != null)
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(56),
+                    ),
+                    onPressed: () => runStep(context, app, next),
+                    child: Text(
+                      plan.first == next ? 'شروع' : 'ادامه: ${next.title}',
+                      style: const TextStyle(
+                        fontSize: 17,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    Text(
-                      'مکث هدف: ${faNum(app.waitTarget, 1)} ثانیه',
-                      style: const TextStyle(fontSize: 13, color: C.muted),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: C.softBg,
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                if (!app.lessonsDone) ...[
-                  _step(
-                    1,
-                    'آموزش کوتاه (فقط بار اول)',
-                    'مکث و نفس، شروع نرم · ۳ دقیقه',
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                _step(
-                  done ? null : 1 + off,
-                  'خواندن کتاب: ${passage.title}',
-                  '${faNum(passage.phrases.length)} عبارت · مکث پیش از هر عبارت',
-                  done: done,
-                ),
-                const SizedBox(height: 12),
-                _step(
-                  done ? null : 2 + off,
-                  'خودارزیابی روزانه',
-                  'شدت لکنت امروز از ۰ تا ۹',
-                  done: done && app.todaySession?.selfRating != null,
-                ),
-                const SizedBox(height: 12),
-                _step(
-                  3 + off,
-                  'گفت‌وگو با هم‌صحبت',
-                  'در نسخه‌ی بعدی',
-                  muted: true,
-                ),
-                const SizedBox(height: 16),
-                FilledButton(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => app.lessonsDone
-                          ? PracticeScreen(app: app, passage: passage)
-                          : LessonsScreen(app: app),
-                    ),
-                  ),
-                  child: Text(
-                    !app.lessonsDone
-                        ? 'شروع آموزش'
-                        : (done ? 'یک جلسه‌ی دیگر' : 'شروع جلسه'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'تمرین‌های بیشتر',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 8),
-          _more(
-            context,
-            Icons.record_voice_over_outlined,
-            'تمرین کلمه',
-            app.wordGroups.isEmpty
-                ? 'روی صداهایی که برایت سخت‌ترند'
-                : 'پله‌ی ${faNum(app.wordStep + 1)} از ۳',
-            app.lessonsDone
-                ? WordsScreen(app: app)
-                : LessonsScreen(app: app, startPracticeAfter: false),
-          ),
-          const SizedBox(height: 8),
-          _more(
-            context,
-            Icons.forum_outlined,
-            'صحبت آزاد',
-            'یک یا سه دقیقه درباره‌ی یک موضوع',
-            app.lessonsDone
-                ? MonologueScreen(app: app)
-                : LessonsScreen(app: app, startPracticeAfter: false),
-          ),
-          const SizedBox(height: 8),
-          _more(
-            context,
-            Icons.storefront_outlined,
-            'موقعیت‌های واقعی',
-            'پیشنهاد امروز: ${nextSituation(app.situationLogs, DateTime.now()).title}',
-            SituationsScreen(app: app),
-          ),
-          if (app.needsTherapistNudge) ...[
-            const SizedBox(height: 12),
-            AppCard(
-              color: C.warmBg,
-              border: false,
-              padding: const EdgeInsets.fromLTRB(16, 12, 8, 6),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                    'گفتارین ابزار تمرین است، نه درمان. برای برنامه‌ی دقیق، دست‌کم یک بار با گفتاردرمانگر ارزیابی شو.',
-                    style: TextStyle(fontSize: 13, height: 1.8),
-                  ),
-                  Align(
-                    alignment: AlignmentDirectional.centerEnd,
-                    child: GuideLink(pageId: 'therapist', label: 'کی و چرا؟'),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          const SizedBox(height: 12),
-          if (week.phrases > 0)
-            Row(
-              children: [
-                Expanded(
-                  child: StatTile(
-                    label: 'مکث کافی (۷ روز)',
-                    value: faPercent(week.pause),
-                    note: _delta(week.pause, prev.pause, prev.phrases),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: StatTile(
-                    label: 'شروع نرم (۷ روز)',
-                    value: faPercent(week.soft),
-                    note: _delta(week.soft, prev.soft, prev.phrases),
-                  ),
-                ),
-              ],
-            ),
-          if (week.phrases > 0) const SizedBox(height: 12),
-          if (app.lessonsDone)
-            const AppCard(
-              color: C.brandTint,
-              border: false,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.graphic_eq, color: C.brandDark),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
+                        Icon(Icons.check_circle, color: C.softDark),
+                        SizedBox(width: 8),
                         Text(
-                          'تکنیک: شروع نرم',
+                          'آفرین؛ همین استمرار است که اثر می‌کند',
                           style: TextStyle(
-                            fontSize: 14,
+                            color: C.softDark,
                             fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          'صدای اول کلمه را مثل یک بازدم آرام شروع کن؛ اول زمزمه، بعد کم‌کم بلند.',
-                          style: TextStyle(
-                            fontSize: 13,
-                            height: 1.7,
-                            color: Color(0xFF33454B),
                           ),
                         ),
                       ],
                     ),
                   ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // ---- stage ----
+          InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => ProgramScreen(app: app))),
+            child: AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'مرحله‌ی ${faNum(app.stage)} از ۴ · ${stage.name}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      const Icon(Icons.chevron_left, color: C.muted),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  StageBar(stage: app.stage),
+                  const SizedBox(height: 12),
+                  if (crit.isEmpty)
+                    const Text(
+                      'مرحله‌ی آخر: هفته‌ای دست‌کم چهار روز تمرین کوتاه. اگر روزهای سخت پشت سر هم شد، اپ خودش تمرین آهسته را برمی‌گرداند.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.8,
+                        color: C.muted,
+                      ),
+                    )
+                  else ...[
+                    const Text(
+                      'برای مرحله‌ی بعد:',
+                      style: TextStyle(fontSize: 13, color: C.muted),
+                    ),
+                    const SizedBox(height: 6),
+                    for (final c in crit) CriterionRow(c: c, dense: true),
+                  ],
                 ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // ---- this week ----
+          if (week.phrases > 0) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: StatTile(
+                    label: 'شروع نرم · ۷ روز',
+                    value: faPercent(week.soft),
+                    note: _delta(week.soft, prev.soft, prev.phrases),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: StatTile(
+                    label: 'مکث کافی · ۷ روز',
+                    value: faPercent(week.pause),
+                    note: _delta(week.pause, prev.pause, prev.phrases),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (app.streak > 1)
+            Center(
+              child: Chip2(
+                '${faNum(app.streak)} روز پشت سر هم',
+                fg: C.warmDark,
+                bg: C.warmBg,
               ),
             ),
         ],
       ),
     );
   }
-
-  Widget _more(
-    BuildContext context,
-    IconData icon,
-    String title,
-    String sub,
-    Widget page,
-  ) => InkWell(
-    borderRadius: BorderRadius.circular(20),
-    onTap: () =>
-        Navigator.of(context).push(MaterialPageRoute(builder: (_) => page)),
-    child: AppCard(
-      padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: C.brandTint,
-            child: Icon(icon, color: C.brandDark),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                Text(
-                  sub,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12, color: C.muted),
-                ),
-              ],
-            ),
-          ),
-          const Icon(Icons.chevron_left, color: C.muted),
-        ],
-      ),
-    ),
-  );
 
   String? _delta(double now, double before, int beforeCount) {
     if (beforeCount == 0) return null;
@@ -320,53 +222,162 @@ class HomeScreen extends StatelessWidget {
         ? '${faNum(d)}٪ بهتر از هفته‌ی قبل'
         : '${faNum(-d)}٪ کمتر از هفته‌ی قبل';
   }
+}
 
-  Widget _step(
-    int? n,
-    String title,
-    String sub, {
-    bool done = false,
-    bool muted = false,
-  }) {
-    final Widget badge = done
-        ? const CircleAvatar(
-            radius: 16,
-            backgroundColor: C.softBg,
-            child: Icon(Icons.check, size: 18, color: C.softDark),
-          )
-        : CircleAvatar(
-            radius: 16,
-            backgroundColor: muted ? const Color(0xFFE9EDEA) : C.brand,
-            child: Text(
-              faNum(n ?? 0),
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: muted ? C.muted : Colors.white,
-              ),
-            ),
-          );
-    return Row(
-      children: [
-        badge,
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+class _StepRow extends StatelessWidget {
+  final int n;
+  final PlanStep step;
+  final bool current;
+  final VoidCallback onTap;
+  const _StepRow({
+    required this.n,
+    required this.step,
+    required this.current,
+    required this.onTap,
+  });
+
+  static IconData icon(StepKind k) => switch (k) {
+    StepKind.lessons => Icons.school_outlined,
+    StepKind.slow => Icons.slow_motion_video,
+    StepKind.read => Icons.menu_book_outlined,
+    StepKind.words => Icons.record_voice_over_outlined,
+    StepKind.talk => Icons.forum_outlined,
+    StepKind.situation => Icons.storefront_outlined,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final done = step.done;
+    return Material(
+      color: current ? C.brandTint : Colors.transparent,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          child: Row(
             children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: muted ? C.muted : C.ink,
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: done
+                    ? C.softBg
+                    : (current ? C.brand : C.brandTint),
+                child: done
+                    ? const Icon(
+                        Icons.check_rounded,
+                        size: 20,
+                        color: C.softDark,
+                      )
+                    : Icon(
+                        icon(step.kind),
+                        size: 19,
+                        color: current ? Colors.white : C.brandDark,
+                      ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      step.title,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: done ? C.muted : C.ink,
+                        decoration: done ? TextDecoration.lineThrough : null,
+                        decorationColor: C.muted,
+                      ),
+                    ),
+                    Text(
+                      step.sub,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        height: 1.6,
+                        color: C.muted,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              Text(sub, style: const TextStyle(fontSize: 12, color: C.muted)),
+              const SizedBox(width: 8),
+              Text(
+                step.minutes > 0
+                    ? '${faNum(step.minutes)} دقیقه'
+                    : 'در طول روز',
+                style: const TextStyle(fontSize: 12, color: C.muted),
+              ),
             ],
           ),
         ),
-      ],
+      ),
     );
   }
+}
+
+/// Four segments, one per stage.
+class StageBar extends StatelessWidget {
+  final int stage;
+  const StageBar({super.key, required this.stage});
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: 'مرحله‌ی ${faNum(stage)} از ۴',
+    child: Row(
+      children: [
+        for (var i = 1; i <= 4; i++) ...[
+          Expanded(
+            child: Container(
+              height: 8,
+              decoration: BoxDecoration(
+                color: i < stage ? C.soft : (i == stage ? C.brand : C.line),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ),
+          if (i < 4) const SizedBox(width: 6),
+        ],
+      ],
+    ),
+  );
+}
+
+class CriterionRow extends StatelessWidget {
+  final Criterion c;
+  final bool dense;
+  const CriterionRow({super.key, required this.c, this.dense = false});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: EdgeInsets.symmetric(vertical: dense ? 4 : 8),
+    child: Row(
+      children: [
+        Icon(
+          c.met ? Icons.check_circle : Icons.radio_button_unchecked,
+          size: 20,
+          color: c.met ? C.soft : C.line,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            c.label,
+            style: TextStyle(fontSize: dense ? 13 : 14, height: 1.6),
+          ),
+        ),
+        const SizedBox(width: 8),
+        if (c.need > 1)
+          Text(
+            '${faNum(c.have.clamp(0, c.need))} از ${faNum(c.need)}',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: c.met ? C.softDark : C.muted,
+            ),
+          ),
+      ],
+    ),
+  );
 }

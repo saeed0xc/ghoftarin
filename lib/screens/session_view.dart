@@ -7,6 +7,7 @@ import '../audio/mic.dart';
 import '../audio/recording.dart';
 import '../data/content.dart';
 import '../fa.dart';
+import '../services/coach.dart';
 import '../theme.dart';
 import '../widgets/visuals.dart';
 import 'guide.dart';
@@ -38,9 +39,17 @@ class SessionView extends StatefulWidget {
   State<SessionView> createState() => _SessionViewState();
 }
 
-enum _Ui { intro, noPermission, calibrating, pausing, speaking, done }
+enum _Ui {
+  intro,
+  noPermission,
+  calibrating,
+  pausing,
+  speaking,
+  interrupted,
+  done,
+}
 
-class _SessionViewState extends State<SessionView> {
+class _SessionViewState extends State<SessionView> with WidgetsBindingObserver {
   final _mic = Mic();
   late FluencyEngine _engine;
   _Ui _ui = _Ui.intro;
@@ -56,6 +65,7 @@ class _SessionViewState extends State<SessionView> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _engine = FluencyEngine(
       config: EngineConfig(waitTarget: widget.waitTarget),
       syllables: widget.passage.syllables,
@@ -65,14 +75,52 @@ class _SessionViewState extends State<SessionView> {
     );
   }
 
+  bool get _listening =>
+      _ui == _Ui.calibrating || _ui == _Ui.pausing || _ui == _Ui.speaking;
+
+  /// A phone call or leaving the app cuts the microphone: stop cleanly and
+  /// offer to continue from the same phrase, instead of measuring silence.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState s) {
+    if ((s == AppLifecycleState.paused || s == AppLifecycleState.hidden) &&
+        _listening) {
+      _mic.stop();
+      _engine.stop();
+      WakelockPlus.disable().catchError((_) {});
+      setState(() => _ui = _Ui.interrupted);
+    }
+  }
+
+  Future<void> _resume() async {
+    await Coach.stop();
+    if (!await _mic.ensurePermission()) {
+      setState(() => _ui = _Ui.noPermission);
+      return;
+    }
+    _engine.resume();
+    setState(() => _ui = _Ui.calibrating);
+    WakelockPlus.enable().catchError((_) {});
+    final rec = widget.recording;
+    await _mic.start(
+      rec == null
+          ? _engine.addSamples
+          : (samples) {
+              rec.add(samples);
+              _engine.addSamples(samples);
+            },
+    );
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _mic.dispose();
     WakelockPlus.disable().catchError((_) {});
     super.dispose();
   }
 
   Future<void> _start() async {
+    await Coach.stop(); // never let the coach's voice into the calibration
     final ok = await _mic.ensurePermission();
     if (!ok) {
       setState(() => _ui = _Ui.noPermission);
@@ -208,9 +256,12 @@ class _SessionViewState extends State<SessionView> {
                           Text(
                             widget.guided
                                 ? (widget.passage.id.startsWith('lesson') ||
-                                          widget.passage.id.startsWith('words')
+                                          widget.passage.id.startsWith(
+                                            'words',
+                                          ) ||
+                                          widget.passage.id == 'slow'
                                       ? widget.passage.title
-                                      : 'خواندن کتاب')
+                                      : 'خواندن کتاب: ${widget.passage.title}')
                                 : 'ارزیابی: خواندن متن',
                             style: const TextStyle(
                               fontSize: 12,
@@ -353,12 +404,51 @@ class _SessionViewState extends State<SessionView> {
           ),
         );
       case _Ui.noPermission:
-        return const AppCard(
+        return AppCard(
           color: C.warnBg,
           border: false,
-          child: Text(
-            'برای تمرین، اپ به میکروفون نیاز دارد. اجازه‌ی میکروفون را بده؛ اگر قبلاً رد کرده‌ای، از تنظیمات گوشی › برنامه‌ها › گفتارین › مجوزها آن را روشن کن.',
-            style: TextStyle(fontSize: 14, height: 1.8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'برای تمرین، اپ به میکروفون نیاز دارد. صدا فقط روی همین گوشی تحلیل می‌شود. اگر قبلاً اجازه نداده‌ای، از تنظیمات گوشی › برنامه‌ها › گفتارین › مجوزها میکروفون را روشن کن.',
+                style: TextStyle(fontSize: 14, height: 1.8),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: _start,
+                child: const Text('دوباره امتحان کن'),
+              ),
+            ],
+          ),
+        );
+      case _Ui.interrupted:
+        return AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Icon(Icons.pause_circle_outline, size: 48, color: C.brand),
+              const SizedBox(height: 8),
+              const Text(
+                'تمرین متوقف شد',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _results.isEmpty
+                    ? 'از اول عبارت اول ادامه می‌دهیم.'
+                    : '${faNum(_results.length)} عبارت ثبت شده است. از عبارت ${faNum(_results.length + 1)} ادامه می‌دهیم.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 14,
+                  height: 1.8,
+                  color: C.muted,
+                ),
+              ),
+              const SizedBox(height: 12),
+              FilledButton(onPressed: _resume, child: const Text('ادامه')),
+            ],
           ),
         );
       case _Ui.calibrating:

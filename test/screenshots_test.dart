@@ -21,7 +21,10 @@ import 'package:goftarin/screens/words.dart';
 import 'package:goftarin/screens/situations.dart';
 import 'package:goftarin/screens/monologue.dart';
 import 'package:goftarin/screens/lessons.dart';
+import 'package:goftarin/screens/library.dart';
+import 'package:goftarin/screens/program_screen.dart';
 import 'package:goftarin/data/situations.dart';
+import 'package:goftarin/services/coach.dart';
 import 'package:goftarin/theme.dart';
 import 'package:goftarin/widgets/visuals.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -30,41 +33,69 @@ Future<void> loadFonts() async {
   Future<void> family(String name, List<String> files) async {
     final l = FontLoader(name);
     for (final f in files) {
-      l.addFont(Future.value(ByteData.view(File('assets/fonts/$f').readAsBytesSync().buffer)));
+      l.addFont(
+        Future.value(
+          ByteData.view(File('assets/fonts/$f').readAsBytesSync().buffer),
+        ),
+      );
     }
     await l.load();
   }
 
-  await family('Vazirmatn', ['Vazirmatn-Regular.ttf', 'Vazirmatn-Medium.ttf', 'Vazirmatn-Bold.ttf', 'Vazirmatn-ExtraBold.ttf']);
-  await family('NotoNaskhArabic', ['NotoNaskhArabic-Regular.ttf', 'NotoNaskhArabic-SemiBold.ttf']);
+  await family('Vazirmatn', [
+    'Vazirmatn-Regular.ttf',
+    'Vazirmatn-Medium.ttf',
+    'Vazirmatn-Bold.ttf',
+    'Vazirmatn-ExtraBold.ttf',
+  ]);
+  await family('NotoNaskhArabic', [
+    'NotoNaskhArabic-Regular.ttf',
+    'NotoNaskhArabic-SemiBold.ttf',
+  ]);
   // Material icons
-  final icons = File('${Platform.environment['FLUTTER_ROOT'] ?? '/opt/dev/flutter'}/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf');
+  final icons = File(
+    '${Platform.environment['FLUTTER_ROOT'] ?? '/opt/dev/flutter'}/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
+  );
   if (icons.existsSync()) {
-    final l = FontLoader('MaterialIcons')..addFont(Future.value(ByteData.view(icons.readAsBytesSync().buffer)));
+    final l = FontLoader('MaterialIcons')
+      ..addFont(Future.value(ByteData.view(icons.readAsBytesSync().buffer)));
     await l.load();
   }
 }
 
-PhraseResult pr(int i, double pause, double rise, double dur, int syl, double wait) => PhraseResult(
-      index: i,
-      pauseSec: pause,
-      early: pause < wait,
-      riseMs: rise,
-      onset: classifyOnset(rise, const EngineConfig()),
-      durationSec: dur,
-      syllablesPerSec: syl / dur,
-      onsetEnvelope: const [],
-    );
+PhraseResult pr(
+  int i,
+  double pause,
+  double rise,
+  double dur,
+  int syl,
+  double wait,
+) => PhraseResult(
+  index: i,
+  pauseSec: pause,
+  early: pause < wait,
+  riseMs: rise,
+  onset: classifyOnset(rise, const EngineConfig()),
+  durationSec: dur,
+  syllablesPerSec: syl / dur,
+  onsetEnvelope: const [],
+);
 
 AppState demoState() {
   final app = AppState()
     ..onboarded = true
     ..waitTarget = 1.8
-    ..reminderOn = false;
+    ..reminderOn = false
+    ..lessonsDone = true
+    ..stage = 2
+    ..stageSince = DateTime.now().subtract(const Duration(days: 6));
   final p = passageById('golestan-1');
   app.assessment = Assessment(
     date: DateTime.now().subtract(const Duration(days: 10)),
-    results: [for (var i = 0; i < 7; i++) pr(i, 0.5 + i * 0.05, i.isEven ? 70 : 160, 2.0, p.syllables[i], 2.0)],
+    results: [
+      for (var i = 0; i < 7; i++)
+        pr(i, 0.5 + i * 0.05, i.isEven ? 70 : 160, 2.0, p.syllables[i], 2.0),
+    ],
     confidence: 48,
     selfRating: 5,
   );
@@ -85,33 +116,46 @@ AppState demoState() {
     [170, 185, 160, 175, 190, 150, 180],
   ];
   for (var d = 0; d < 6; d++) {
-    app.sessions.add(SessionRecord(
-      date: DateTime.now().subtract(Duration(days: 5 - d)),
-      passageId: p.id,
-      waitTarget: 2.0,
-      results: [for (var i = 0; i < 7; i++) pr(i, pauses[d][i], rises[d][i].toDouble(), 2.2, p.syllables[i], 2.0)],
-      selfRating: [5, 5, 4, 4, 3, 3][d],
-    ));
+    app.sessions.add(
+      SessionRecord(
+        date: DateTime.now().subtract(Duration(days: 5 - d)),
+        passageId: p.id,
+        waitTarget: 2.0,
+        results: [
+          for (var i = 0; i < 7; i++)
+            pr(
+              i,
+              pauses[d][i],
+              rises[d][i].toDouble(),
+              2.2,
+              p.syllables[i],
+              2.0,
+            ),
+        ],
+        selfRating: [5, 5, 4, 4, 3, 3][d],
+      ),
+    );
   }
   return app;
 }
 
 Widget wrap(Widget child) => MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: buildTheme(),
-      locale: const Locale('fa', 'IR'),
-      supportedLocales: const [Locale('fa', 'IR')],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      home: child,
-    );
+  debugShowCheckedModeBanner: false,
+  theme: buildTheme(),
+  locale: const Locale('fa', 'IR'),
+  supportedLocales: const [Locale('fa', 'IR')],
+  localizationsDelegates: const [
+    GlobalMaterialLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+  ],
+  home: child,
+);
 
 void main() {
   setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
+    Coach.enabled = false;
     await loadFonts();
   });
 
@@ -121,12 +165,25 @@ void main() {
     addTearDown(t.view.reset);
     await t.pumpWidget(wrap(w));
     await t.pumpAndSettle();
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/$name.png'));
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('screenshots/$name.png'),
+    );
   }
 
-  testWidgets('onboarding', (t) async => shoot(t, OnboardingScreen(app: AppState()), '1-onboarding'));
+  testWidgets(
+    'onboarding',
+    (t) async => shoot(t, OnboardingScreen(app: AppState()), '1-onboarding'),
+  );
   testWidgets('home', (t) async => shoot(t, Shell(app: demoState()), '2-home'));
-  testWidgets('progress', (t) async => shoot(t, Scaffold(body: ProgressScreen(app: demoState())), '3-progress'));
+  testWidgets(
+    'progress',
+    (t) async => shoot(
+      t,
+      Scaffold(body: ProgressScreen(app: demoState())),
+      '3-progress',
+    ),
+  );
   testWidgets('reading', (t) async {
     final p = passageById('golestan-1');
     await shoot(
@@ -135,19 +192,32 @@ void main() {
         body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(20),
-            child: Column(children: [
-              BookPage(source: p.source, phrases: p.phrases, current: 3),
-              const SizedBox(height: 16),
-              const AppCard(
-                child: Column(children: [
-                  BreathRing(progress: 0.6, label: '۰٫۷'),
-                  SizedBox(height: 12),
-                  Text('نفس بکش و صبر کن', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-                  SizedBox(height: 4),
-                  Text('وقتی حلقه پر شد، عبارت پررنگ را آرام شروع کن.', style: TextStyle(fontSize: 13, color: C.muted)),
-                ]),
-              ),
-            ]),
+            child: Column(
+              children: [
+                BookPage(source: p.source, phrases: p.phrases, current: 3),
+                const SizedBox(height: 16),
+                const AppCard(
+                  child: Column(
+                    children: [
+                      BreathRing(progress: 0.6, label: '۰٫۷'),
+                      SizedBox(height: 12),
+                      Text(
+                        'نفس بکش و صبر کن',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'وقتی حلقه پر شد، عبارت پررنگ را آرام شروع کن.',
+                        style: TextStyle(fontSize: 13, color: C.muted),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -155,22 +225,64 @@ void main() {
     );
   });
 
-  testWidgets('safety', (t) async => shoot(t, SafetyScreen(app: AppState()), '5-safety'));
-  testWidgets('guide', (t) async => shoot(t, const GuidePageScreen(pageId: 'soft'), '6-guide-soft'));
+  testWidgets(
+    'safety',
+    (t) async => shoot(t, SafetyScreen(app: AppState()), '5-safety'),
+  );
+  testWidgets(
+    'guide',
+    (t) async =>
+        shoot(t, const GuidePageScreen(pageId: 'soft'), '6-guide-soft'),
+  );
   testWidgets('words', (t) async {
-    final app = demoState()..wordGroups = ['p', 'a']..wordStep = 1;
+    final app = demoState()
+      ..wordGroups = ['p', 'a']
+      ..wordStep = 1;
     await shoot(t, WordsScreen(app: app), '7-words');
   });
 
   testWidgets('situations', (t) async {
     final app = demoState();
-    app.situationLogs.add(SituationLog(date: DateTime.now().subtract(const Duration(days: 4)), situationId: 'greet', anxietyBefore: 6, anxietyAfter: 3, severity: 3));
-    app.situationLogs.add(SituationLog(date: DateTime.now().subtract(const Duration(days: 3)), situationId: 'greet', anxietyBefore: 3, anxietyAfter: 2, severity: 2));
+    app.situationLogs.add(
+      SituationLog(
+        date: DateTime.now().subtract(const Duration(days: 4)),
+        situationId: 'greet',
+        anxietyBefore: 6,
+        anxietyAfter: 3,
+        severity: 3,
+      ),
+    );
+    app.situationLogs.add(
+      SituationLog(
+        date: DateTime.now().subtract(const Duration(days: 3)),
+        situationId: 'greet',
+        anxietyBefore: 3,
+        anxietyAfter: 2,
+        severity: 2,
+      ),
+    );
     await shoot(t, SituationsScreen(app: app), '8-situations');
   });
-  testWidgets('monologue', (t) async => shoot(t, MonologueScreen(app: demoState()), '9-monologue'));
+  testWidgets(
+    'monologue',
+    (t) async => shoot(t, MonologueScreen(app: demoState()), '9-monologue'),
+  );
 
   testWidgets('lessons', (t) async {
     await shoot(t, LessonsScreen(app: AppState()), '10-lessons');
+  });
+
+  testWidgets(
+    'program',
+    (t) async => shoot(t, ProgramScreen(app: demoState()), '11-program'),
+  );
+  testWidgets(
+    'practice hub',
+    (t) async =>
+        shoot(t, Scaffold(body: LibraryScreen(app: demoState())), '12-hub'),
+  );
+  testWidgets('home new user', (t) async {
+    final app = AppState()..onboarded = true;
+    await shoot(t, Shell(app: app), '13-home-new');
   });
 }

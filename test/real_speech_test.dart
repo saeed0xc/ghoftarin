@@ -29,14 +29,20 @@ List<double> readWav(String path) {
 
 void main() {
   final p = passageById('morning');
-  for (final name in ['tts-amir-quiet', 'tts-amir-fan', 'tts-haaniye-quiet', 'tts-haaniye-fan']) {
+  for (final name in [
+    'tts-amir-quiet',
+    'tts-amir-fan',
+    'tts-haaniye-quiet',
+    'tts-haaniye-fan',
+  ]) {
     test('finds all 7 phrases and their starts: $name', () {
       final truth = File('test/fixtures/$name.txt')
           .readAsLinesSync()
           .map((l) => l.split(' ').map(double.parse).toList())
           .toList();
       final rs = <PhraseResult>[];
-      final e = FluencyEngine(syllables: p.syllables, onPhrase: rs.add)..start();
+      final e = FluencyEngine(syllables: p.syllables, onPhrase: rs.add)
+        ..start();
       final a = readWav('test/fixtures/$name.wav');
       for (var i = 0; i < a.length; i += 1600) {
         e.addSamples(a.sublist(i, i + 1600 > a.length ? a.length : i + 1600));
@@ -46,14 +52,30 @@ void main() {
         // quiet room: within 50 ms; fan at 14 dB SNR (speech band): within 200 ms,
         // since the first part of a soft start is genuinely under the noise
         final tol = name.endsWith('quiet') ? 0.05 : 0.2;
-        expect(rs[i].startSec, closeTo(truth[i][0], tol), reason: 'start of phrase $i');
+        expect(
+          rs[i].startSec,
+          closeTo(truth[i][0], tol),
+          reason: 'start of phrase $i',
+        );
         if (i > 0) {
           final truePause = truth[i][0] - truth[i - 1][1];
-          expect(rs[i].pauseSec, closeTo(truePause, tol + 0.1), reason: 'pause $i');
+          expect(
+            rs[i].pauseSec,
+            closeTo(truePause, tol + 0.1),
+            reason: 'pause $i',
+          );
         }
       }
       // phrases 2 and 5 were given short pauses (1.0 s and 1.2 s)
-      expect(rs.map((r) => r.early).toList(), [false, false, true, false, false, true, false]);
+      expect(rs.map((r) => r.early).toList(), [
+        false,
+        false,
+        true,
+        false,
+        false,
+        true,
+        false,
+      ]);
     });
   }
 
@@ -66,7 +88,9 @@ void main() {
   }
   test('a quiet room is not flagged', () {
     final e = FluencyEngine(syllables: const [1])..start();
-    e.addSamples(readWav('test/fixtures/tts-amir-quiet.wav').sublist(0, 16000 * 2));
+    e.addSamples(
+      readWav('test/fixtures/tts-amir-quiet.wav').sublist(0, 16000 * 2),
+    );
     expect(e.noisyRoom, false);
   });
 }

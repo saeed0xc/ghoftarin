@@ -15,14 +15,23 @@ List<double> synth(List<List<num>> plan, {int sr = 16000, double lead = 2.0}) {
 
   silence(lead);
   for (final p in plan) {
-    final pause = p[0].toDouble(), dur = p[1].toDouble(), riseMs = p[2].toDouble();
+    final pause = p[0].toDouble(),
+        dur = p[1].toDouble(),
+        riseMs = p[2].toDouble();
     silence(pause);
     final n = (dur * sr).round(), rise = riseMs / 1000 * sr;
     for (var k = 0; k < n; k++) {
-      final a = math.min(1.0, k / math.max(1.0, rise)) * math.min(1.0, (n - k) / (0.12 * sr));
+      final a =
+          math.min(1.0, k / math.max(1.0, rise)) *
+          math.min(1.0, (n - k) / (0.12 * sr));
       final t = k / sr;
-      out.add(0.35 * a * (math.sin(2 * math.pi * 150 * t) + 0.5 * math.sin(4 * math.pi * 150 * t)) +
-          (rnd.nextDouble() - 0.5) * 0.004);
+      out.add(
+        0.35 *
+                a *
+                (math.sin(2 * math.pi * 150 * t) +
+                    0.5 * math.sin(4 * math.pi * 150 * t)) +
+            (rnd.nextDouble() - 0.5) * 0.004,
+      );
     }
   }
   silence(1.5);
@@ -39,7 +48,10 @@ void main() {
       [2.3, 1.5, 120], // medium
     ];
     final results = <PhraseResult>[];
-    final e = FluencyEngine(syllables: const [8, 10, 11, 16], onPhrase: results.add)..start();
+    final e = FluencyEngine(
+      syllables: const [8, 10, 11, 16],
+      onPhrase: results.add,
+    )..start();
     final audio = synth(plan);
     // feed in uneven chunks, like a microphone stream
     for (var i = 0; i < audio.length; i += 1777) {
@@ -53,11 +65,19 @@ void main() {
     expect(results[0].pauseSec, closeTo(2.0 + 2.4 - 1.5, 0.08));
     for (var i = 1; i < 4; i++) {
       // later pauses include the ramp-down tail (~0.1 s) of the previous phrase
-      expect(results[i].pauseSec, closeTo(plan[i][0].toDouble(), 0.15), reason: 'pause $i');
+      expect(
+        results[i].pauseSec,
+        closeTo(plan[i][0].toDouble(), 0.15),
+        reason: 'pause $i',
+      );
     }
     expect(results.map((r) => r.early).toList(), [false, false, true, false]);
-    expect(results.map((r) => r.onset).toList(),
-        [OnsetClass.soft, OnsetClass.hard, OnsetClass.soft, OnsetClass.medium]);
+    expect(results.map((r) => r.onset).toList(), [
+      OnsetClass.soft,
+      OnsetClass.hard,
+      OnsetClass.soft,
+      OnsetClass.medium,
+    ]);
     // a linear ramp's 10-90% time is 80% of the ramp
     expect(results[0].riseMs, closeTo(0.8 * 260, 30));
     expect(results[1].riseMs, lessThan(60));
@@ -70,7 +90,8 @@ void main() {
 
   test('ignores a short cough during the pause', () {
     final results = <PhraseResult>[];
-    final e = FluencyEngine(syllables: const [8], onPhrase: results.add)..start();
+    final e = FluencyEngine(syllables: const [8], onPhrase: results.add)
+      ..start();
     // cough of 0.12 s, then a real phrase 2.5 s after calibration ends
     final audio = synth([
       [0.5, 0.12, 5],
@@ -82,14 +103,18 @@ void main() {
   });
 
   test('riseTime of a linear ramp', () {
-    final env = List<double>.generate(60, (i) => i < 10 ? 0 : math.min(1.0, (i - 10) / 20));
+    final env = List<double>.generate(
+      60,
+      (i) => i < 10 ? 0 : math.min(1.0, (i - 10) / 20),
+    );
     // 20 hops of 10 ms ramp -> 10..90% = 16 hops = 160 ms
     expect(riseTime(env, 10, 10, 0), closeTo(160, 12));
   });
 
   test('undo the last phrase and read it again', () {
     final results = <PhraseResult>[];
-    final e = FluencyEngine(syllables: const [8, 10], onPhrase: results.add)..start();
+    final e = FluencyEngine(syllables: const [8, 10], onPhrase: results.add)
+      ..start();
     final a = synth([
       [2.2, 1.2, 200],
       [2.2, 1.2, 200],
@@ -123,7 +148,9 @@ void main() {
       var y = 0.0;
       for (var i = 0; i < (sec * sr).round(); i++) {
         final x = (rnd.nextDouble() - 0.5) * 2;
-        y = lowpass ? y * 0.97 + x * 0.03 : x; // ~80 Hz one-pole low-pass for "fan"
+        y = lowpass
+            ? y * 0.97 + x * 0.03
+            : x; // ~80 Hz one-pole low-pass for "fan"
         out.add(y * (lowpass ? amp * 6 : amp));
       }
     }
@@ -134,18 +161,48 @@ void main() {
     noiseBurst(0.8, 0.3, lowpass: true); // rumble
     silence(1.0);
     final voiced = synth([
-      [2.2, 1.2, 200]
+      [2.2, 1.2, 200],
     ], lead: 0);
     out.addAll(voiced);
 
     final results = <PhraseResult>[];
     FluencyEngine.debugVoicing = true;
-    final e = FluencyEngine(syllables: const [8], onPhrase: results.add)..start();
+    final e = FluencyEngine(syllables: const [8], onPhrase: results.add)
+      ..start();
     e.addSamples(out);
     FluencyEngine.debugVoicing = false;
     expect(results.length, 1, reason: 'only the voiced phrase counts');
     expect(results.first.onset, OnsetClass.soft);
     expect(results.first.peak, greaterThan(0.3));
     expect(results.first.endSec, greaterThan(results.first.startSec));
+  });
+
+  test('resumes after an interruption from the next phrase, times intact', () {
+    final rs = <PhraseResult>[];
+    final e = FluencyEngine(syllables: [5, 5, 5, 5], onPhrase: rs.add)..start();
+    final first = synth([
+      [2.4, 1.4, 260],
+      [2.4, 1.4, 260],
+    ]);
+    e.addSamples(first);
+    expect(rs.length, 2);
+    // a phone call: the microphone stops, half a phrase is lost
+    e.stop();
+    e.addSamples(
+      synth([
+        [0.5, 0.6, 40],
+      ], lead: 0.2),
+    ); // ignored while stopped
+    e.resume();
+    final second = synth([
+      [2.4, 1.4, 260],
+      [2.4, 1.4, 200],
+    ]);
+    e.addSamples(second);
+    expect(rs.map((r) => r.index), [0, 1, 2, 3]);
+    expect(rs[2].onset, OnsetClass.soft);
+    // phrase times continue after the first part's audio (16 kHz)
+    expect(rs[2].startSec, greaterThan(first.length / 16000));
+    expect(e.state, EngineState.done);
   });
 }

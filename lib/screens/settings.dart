@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../data/store.dart';
 import '../fa.dart';
@@ -33,6 +35,61 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       }
     }
+  }
+
+  Future<void> _restore() async {
+    final ctl = TextEditingController();
+    final clip = await Clipboard.getData(Clipboard.kTextPlain);
+    if (clip?.text?.contains('"goftarin"') == true) ctl.text = clip!.text!;
+    if (!mounted) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('بازگردانی از پشتیبان'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'متن پشتیبان را اینجا بچسبان. داده‌های فعلی این گوشی با آن جایگزین می‌شود.',
+              style: TextStyle(height: 1.8),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctl,
+              maxLines: 4,
+              textDirection: TextDirection.ltr,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: '{"app":"goftarin", …}',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('انصراف'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('بازگردانی'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final done = await app.importBackup(ctl.text);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          done
+              ? 'داده‌ها بازگردانی شد.'
+              : 'این متن پشتیبان معتبر گفتارین نیست؛ چیزی تغییر نکرد.',
+        ),
+      ),
+    );
+    if (done) setState(() {});
   }
 
   @override
@@ -150,6 +207,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text(
+                    'راهنمای صوتی',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: const Text(
+                    'توضیح کوتاه پیش از هر تمرین و بازخورد بعد از آن',
+                  ),
+                  value: app.coachOn,
+                  onChanged: (v) async {
+                    setState(() => app.coachOn = v);
+                    await app.save();
+                  },
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text(
                     'با گفتاردرمانگر کار می‌کنم',
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                   ),
@@ -209,6 +281,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
+                  leading: const Icon(
+                    Icons.backup_outlined,
+                    color: C.brandDark,
+                  ),
+                  title: const Text('پشتیبان‌گیری'),
+                  subtitle: const Text(
+                    'همه‌ی تمرین‌ها را به‌صورت متن جایی امن نگه دار؛ مثلاً در پیام‌های ذخیره‌شده',
+                  ),
+                  onTap: () => SharePlus.instance.share(
+                    ShareParams(
+                      text:
+                          'پشتیبان گفتارین — این متن را برای بازگردانی نگه دار\n${app.exportBackup()}',
+                      subject: 'پشتیبان گفتارین',
+                    ),
+                  ),
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(
+                    Icons.settings_backup_restore,
+                    color: C.brandDark,
+                  ),
+                  title: const Text('بازگردانی از پشتیبان'),
+                  onTap: _restore,
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.delete_outline, color: C.warn),
                   title: const Text(
                     'پاک کردن همه‌ی داده‌ها',
@@ -247,12 +346,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 16),
           const Text(
-            'گفتارین ابزار تمرین است و جایگزین تشخیص یا درمان گفتاردرمانگر نیست. همه‌ی داده‌ها فقط روی همین گوشی ذخیره می‌شوند و صدا ضبط یا ارسال نمی‌شود.',
+            'گفتارین ابزار تمرین است و جایگزین تشخیص یا درمان گفتاردرمانگر نیست. همه‌ی داده‌ها فقط روی همین گوشی ذخیره می‌شوند و صدا به هیچ سروری فرستاده نمی‌شود.',
             style: TextStyle(fontSize: 12, height: 1.8, color: C.muted),
           ),
           const SizedBox(height: 8),
           const Text(
-            'نسخه‌ی ۰٫۵ · آزمایشی · متن‌ها در حال بازبینی گفتاردرمانگر',
+            'نسخه‌ی ۰٫۶ · آزمایشی · متن‌ها در حال بازبینی گفتاردرمانگر',
             style: TextStyle(fontSize: 12, color: C.muted),
           ),
         ],

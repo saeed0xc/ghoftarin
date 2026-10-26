@@ -15,7 +15,12 @@ void silence(List<double> out, double sec) {
 }
 
 /// Speech-like voicing: pitch and loudness change every ~120 ms (syllables).
-void speech(List<double> out, double sec, {double f0 = 140, double ramp = 0.2}) {
+void speech(
+  List<double> out,
+  double sec, {
+  double f0 = 140,
+  double ramp = 0.2,
+}) {
   final n = (sec * sr).round();
   var phase = 0.0;
   for (var k = 0; k < n; k++) {
@@ -23,9 +28,17 @@ void speech(List<double> out, double sec, {double f0 = 140, double ramp = 0.2}) 
     final syl = (t / 0.12).floor();
     final f = f0 * (1 + 0.12 * math.sin(syl * 1.7) + 0.04 * math.sin(t * 9));
     phase += 2 * math.pi * f / sr;
-    final amp = math.min(1.0, k / (ramp * sr)) * math.min(1.0, (n - k) / (0.08 * sr)) *
+    final amp =
+        math.min(1.0, k / (ramp * sr)) *
+        math.min(1.0, (n - k) / (0.08 * sr)) *
         (0.6 + 0.4 * math.sin(2 * math.pi * 4.2 * t).abs());
-    out.add(0.3 * amp * (math.sin(phase) + 0.5 * math.sin(2 * phase) + 0.25 * math.sin(3 * phase)));
+    out.add(
+      0.3 *
+          amp *
+          (math.sin(phase) +
+              0.5 * math.sin(2 * phase) +
+              0.25 * math.sin(3 * phase)),
+    );
   }
 }
 
@@ -35,7 +48,11 @@ void held(List<double> out, double sec, {double f0 = 140}) {
   for (var k = 0; k < n; k++) {
     final ph = 2 * math.pi * f0 * k / sr;
     final amp = math.min(1.0, k / (0.15 * sr));
-    out.add(0.3 * amp * (math.sin(ph) + 0.5 * math.sin(2 * ph) + 0.25 * math.sin(3 * ph)));
+    out.add(
+      0.3 *
+          amp *
+          (math.sin(ph) + 0.5 * math.sin(2 * ph) + 0.25 * math.sin(3 * ph)),
+    );
   }
 }
 
@@ -103,25 +120,55 @@ void main() {
   test('real fluent Persian speech: no events in a quiet room; noisy room marked unreliable', () {
     for (final name in ['tts-amir-quiet', 'tts-haaniye-quiet']) {
       final rs = <PhraseResult>[];
-      final e = FluencyEngine(syllables: const [10, 11, 9, 14, 14, 11, 10], onPhrase: rs.add)..start();
+      final e = FluencyEngine(
+        syllables: const [10, 11, 9, 14, 14, 11, 10],
+        onPhrase: rs.add,
+      )..start();
       e.addSamples(readWav('test/fixtures/$name.wav'));
-      expect(rs.fold<int>(0, (s, r) => s + r.disfluencies.total), 0, reason: name);
+      expect(
+        rs.fold<int>(0, (s, r) => s + r.disfluencies.total),
+        0,
+        reason: name,
+      );
       expect(rs.every((r) => r.disfluencyReliable), true, reason: name);
     }
     for (final name in ['tts-amir-fan', 'tts-haaniye-fan']) {
       final rs = <PhraseResult>[];
-      final e = FluencyEngine(syllables: const [10, 11, 9, 14, 14, 11, 10], onPhrase: rs.add)..start();
+      final e = FluencyEngine(
+        syllables: const [10, 11, 9, 14, 14, 11, 10],
+        onPhrase: rs.add,
+      )..start();
       e.addSamples(readWav('test/fixtures/$name.wav'));
-      expect(rs.where((r) => !r.disfluencyReliable).length, greaterThanOrEqualTo(5), reason: name);
+      expect(
+        rs.where((r) => !r.disfluencyReliable).length,
+        greaterThanOrEqualTo(5),
+        reason: name,
+      );
     }
   });
 
   test('real Persian speech with an inserted sound repetition and block', () {
     final rs = <PhraseResult>[];
-    final e = FluencyEngine(syllables: const [10, 11, 9, 14, 14, 11, 10], onPhrase: rs.add)..start();
+    final e = FluencyEngine(
+      syllables: const [10, 11, 9, 14, 14, 11, 10],
+      onPhrase: rs.add,
+    )..start();
     e.addSamples(readWav('test/fixtures/tts-amir-disfluent.wav'));
     expect(rs.length, 7);
-    final per = rs.map((r) => '${r.disfluencies.repetitions}/${r.disfluencies.prolongations}/${r.disfluencies.blocks}').toList();
-    expect(per, ['0/0/0', '0/0/0', '1/0/0', '0/0/0', '0/0/1', '0/0/0', '0/0/0']);
+    final per = rs
+        .map(
+          (r) =>
+              '${r.disfluencies.repetitions}/${r.disfluencies.prolongations}/${r.disfluencies.blocks}',
+        )
+        .toList();
+    expect(per, [
+      '0/0/0',
+      '0/0/0',
+      '1/0/0',
+      '0/0/0',
+      '0/0/1',
+      '0/0/0',
+      '0/0/0',
+    ]);
   });
 }

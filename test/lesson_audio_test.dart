@@ -11,7 +11,11 @@ OnsetClass classify(String path) {
     syllables: const [3],
     onPhrase: rs.add,
   )..start();
-  e.addSamples([...List.filled(22050, 0.0005), ...readWav(path), ...List.filled(22050, 0.0005)]);
+  e.addSamples([
+    ...List.filled(22050, 0.0005),
+    ...readWav(path),
+    ...List.filled(22050, 0.0005),
+  ]);
   expect(rs.length, 1, reason: path);
   return rs.first.onset;
 }

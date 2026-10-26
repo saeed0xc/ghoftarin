@@ -277,6 +277,20 @@ class FluencyEngine {
     state = EngineState.idle;
   }
 
+  /// Continues after an interruption (a phone call, the app sent to the
+  /// background): keeps the finished phrases, drops a phrase in progress and
+  /// calibrates again, since the room may have changed. The hop clock keeps
+  /// running, so phrase times still match a recording that was paused too.
+  void resume() {
+    state = EngineState.calibrating;
+    _calib.clear();
+    _candHop = -1;
+    _env.clear();
+    _hopLog.clear();
+    phraseIndex = results.length;
+    onState?.call(state, 0);
+  }
+
   /// Drops the last phrase (e.g. it was split by a long block, or the user
   /// wants to read it again) and waits for that phrase again.
   PhraseResult? undoLast() {
