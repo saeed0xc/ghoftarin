@@ -8,20 +8,27 @@ import 'package:record/record.dart';
 /// because they would flatten the very loudness rise we measure.
 class Mic {
   final _rec = AudioRecorder();
+
+  /// Voice recording (studio): keeps the phone's speech processing on for a
+  /// cleaner take; the measuring screens keep it off.
+  bool cleanVoice = false;
   StreamSubscription<Uint8List>? _sub;
   int _carry = -1; // odd byte left over from the previous chunk
 
   Future<bool> ensurePermission() => _rec.hasPermission();
 
-  Future<void> start(void Function(List<double> samples) onSamples) async {
+  Future<void> start(
+    void Function(List<double> samples) onSamples, {
+    int sampleRate = 16000,
+  }) async {
     final stream = await _rec.startStream(
-      const RecordConfig(
+      RecordConfig(
         encoder: AudioEncoder.pcm16bits,
-        sampleRate: 16000,
+        sampleRate: sampleRate,
         numChannels: 1,
         autoGain: false,
         echoCancel: false,
-        noiseSuppress: false,
+        noiseSuppress: cleanVoice,
         androidConfig: AndroidRecordConfig(
           audioSource: AndroidAudioSource.voiceRecognition,
         ),

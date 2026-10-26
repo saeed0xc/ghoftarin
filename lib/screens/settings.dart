@@ -9,6 +9,7 @@ import '../theme.dart';
 import 'assessment.dart';
 import 'guide.dart';
 import 'lessons.dart';
+import 'voice_studio.dart';
 
 class SettingsScreen extends StatefulWidget {
   final AppState app;
@@ -277,6 +278,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: const Text('تکرار ارزیابی اولیه'),
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => AssessmentFlow(app: app)),
+                  ),
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.mic_none, color: C.brandDark),
+                  title: const Text('استودیوی صدا'),
+                  subtitle: const Text(
+                    'خواندن جمله‌های راهنما و هم‌صحبت با صدای واقعی',
+                  ),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const VoiceStudioScreen(),
+                    ),
                   ),
                 ),
                 ListTile(

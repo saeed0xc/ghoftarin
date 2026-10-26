@@ -1,12 +1,13 @@
 name: goftarin
 description: "Goftarin - daily fluency practice (Persian)."
 publish_to: 'none'
-version: 0.7.0+1
+version: 0.7.1+1
 
 environment:
   sdk: ^3.13.7
 
 dependencies:
+  archive: ^4.5.2
   audioplayers: ^6.8.1
   flutter:
     sdk: flutter
