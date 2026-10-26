@@ -11,7 +11,6 @@ import '../widgets/self_rating.dart';
 import '../widgets/visuals.dart';
 import 'session_view.dart';
 import 'ss_counter.dart';
-import 'lessons.dart';
 
 /// First-use assessment: natural reading → confidence questions → self-rating → result.
 class AssessmentFlow extends StatefulWidget {
@@ -311,20 +310,9 @@ class _AssessmentFlowState extends State<AssessmentFlow> {
                 ).catchError((Object e) => debugPrint('reminder: $e'));
               }
               if (!mounted) return;
-              if (first && !widget.app.lessonsDone) {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(
-                    builder: (_) => LessonsScreen(app: widget.app),
-                  ),
-                  (r) => r.isFirst,
-                );
-              } else {
-                Navigator.of(context).popUntil((r) => r.isFirst);
-              }
+              Navigator.of(context).popUntil((r) => r.isFirst);
             },
-            child: Text(
-              !widget.app.lessonsDone ? 'رفتن به آموزش کوتاه' : 'شروع برنامه',
-            ),
+            child: const Text('شروع مسیر'),
           ),
         ],
       ),

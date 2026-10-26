@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'data/store.dart';
 import 'screens/home.dart';
+import 'screens/partner_list.dart';
 import 'screens/library.dart';
 import 'screens/onboarding.dart';
 import 'screens/progress.dart';
@@ -64,6 +65,7 @@ class _ShellState extends State<Shell> {
   Widget build(BuildContext context) {
     final pages = [
       HomeScreen(app: widget.app),
+      PartnerListScreen(app: widget.app),
       LibraryScreen(app: widget.app),
       ProgressScreen(app: widget.app),
     ];
@@ -74,9 +76,14 @@ class _ShellState extends State<Shell> {
         onDestinationSelected: (i) => setState(() => _tab = i),
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.today_outlined),
-            selectedIcon: Icon(Icons.today),
-            label: 'امروز',
+            icon: Icon(Icons.route_outlined),
+            selectedIcon: Icon(Icons.route),
+            label: 'مسیر',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.forum_outlined),
+            selectedIcon: Icon(Icons.forum),
+            label: 'هم‌صحبت',
           ),
           NavigationDestination(
             icon: Icon(Icons.grid_view_outlined),

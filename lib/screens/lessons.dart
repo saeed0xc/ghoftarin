@@ -9,8 +9,6 @@ import '../data/store.dart';
 import '../fa.dart';
 import '../theme.dart';
 import '../widgets/visuals.dart';
-import 'plan_runner.dart';
-import 'practice.dart';
 import 'session_view.dart';
 
 const _pausePassage = Passage(
@@ -44,7 +42,7 @@ class LessonsScreen extends StatefulWidget {
   const LessonsScreen({
     super.key,
     required this.app,
-    this.startPracticeAfter = true,
+    this.startPracticeAfter = false,
   });
 
   @override
@@ -98,20 +96,7 @@ class _LessonsScreenState extends State<LessonsScreen> {
     widget.app.lessonsDone = true;
     await widget.app.save();
     if (!mounted) return;
-    if (widget.startPracticeAfter) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          // first step of stage 1: the slow round, with the long pause
-          builder: (_) => PracticeScreen(
-            app: widget.app,
-            passage: slowPassage,
-            overrideWait: slowWait(widget.app),
-          ),
-        ),
-      );
-    } else {
-      Navigator.of(context).pop();
-    }
+    Navigator.of(context).pop();
   }
 
   @override
@@ -376,10 +361,7 @@ class _LessonsScreenState extends State<LessonsScreen> {
       style: TextStyle(fontSize: 15, height: 1.9, color: Color(0xFF33454B)),
     ),
     const SizedBox(height: 24),
-    FilledButton(
-      onPressed: _finish,
-      child: Text(widget.startPracticeAfter ? 'شروع اولین جلسه' : 'تمام'),
-    ),
+    FilledButton(onPressed: _finish, child: const Text('ادامه')),
   ];
 }
 

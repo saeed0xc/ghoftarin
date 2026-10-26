@@ -56,7 +56,12 @@ class _MonologueScreenState extends State<MonologueScreen>
   Timer? _timer;
   final List<PhraseResult> _results = [];
 
-  double get _wait => widget.app.waitTarget;
+  /// Free speech needs a natural pause, not the long reading pause.
+  double get _wait => widget.app.waitTarget.clamp(0.8, 1.0);
+
+  /// Time is up: finish only after the current sentence has ended and a
+  /// calm silence follows. Never cut the speaker off.
+  bool _timeUp = false;
 
   @override
   void initState() {
@@ -94,9 +99,11 @@ class _MonologueScreenState extends State<MonologueScreen>
       return;
     }
     _results.clear();
+    _timeUp = false;
     _rec.clear();
     _engine = FluencyEngine(
-      config: EngineConfig(waitTarget: _wait),
+      // thinking pauses inside a sentence (up to ~1.8 s) do not split it
+      config: EngineConfig(waitTarget: _wait, endMs: 1800),
       onPhrase: (r) => setState(() => _results.add(r)),
       onState: (s, e) {
         if (!mounted) return;
@@ -105,9 +112,13 @@ class _MonologueScreenState extends State<MonologueScreen>
           _timer = Timer.periodic(const Duration(seconds: 1), (_) {
             if (!mounted) return;
             setState(() => _left--);
-            if (_left <= 0) _finish();
+            if (_left <= 0) _timeUp = true;
           });
           setState(() => _m = _M.running);
+        }
+        if (s == EngineState.pausing && _timeUp && e >= 1.5) {
+          _finish();
+          return;
         }
         if (s == EngineState.pausing) {
           if (_speaking || (e - _pause).abs() >= 0.05 || e < _pause) {
@@ -252,7 +263,8 @@ class _MonologueScreenState extends State<MonologueScreen>
         child: Text(
           switch (mode) {
             OrbMode.speaking => 'ادامه بده…',
-            OrbMode.ready => 'هر وقت آماده‌ای، جمله‌ی بعد',
+            _ when _timeUp => 'وقت تمام شد؛ جمله‌ات را با خیال راحت تمام کن',
+            OrbMode.ready => 'هر وقت خواستی ادامه بده',
             _ => 'یک نفس آرام…',
           },
           style: TextStyle(

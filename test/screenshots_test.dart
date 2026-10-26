@@ -22,7 +22,10 @@ import 'package:goftarin/screens/situations.dart';
 import 'package:goftarin/screens/monologue.dart';
 import 'package:goftarin/screens/lessons.dart';
 import 'package:goftarin/screens/library.dart';
-import 'package:goftarin/screens/program_screen.dart';
+import 'package:goftarin/screens/partner_list.dart';
+import 'package:goftarin/screens/partner_screen.dart';
+import 'package:goftarin/screens/word_lesson.dart';
+import 'package:goftarin/data/partner.dart';
 import 'package:goftarin/data/situations.dart';
 import 'package:goftarin/services/coach.dart';
 import 'package:goftarin/theme.dart';
@@ -272,9 +275,31 @@ void main() {
     await shoot(t, LessonsScreen(app: AppState()), '10-lessons');
   });
 
+  testWidgets('path mid-way', (t) async {
+    final app = demoState();
+    app.pathStars.addAll([3, 2, 3, 3, 1, 2, 3, 2, 3, 3, 2, 3, 3, 2, 3, 2]);
+    await shoot(t, Shell(app: app), '11-path');
+  });
   testWidgets(
-    'program',
-    (t) async => shoot(t, ProgramScreen(app: demoState()), '11-program'),
+    'partner list',
+    (t) async => shoot(
+      t,
+      Scaffold(body: PartnerListScreen(app: demoState())),
+      '14-partner-list',
+    ),
+  );
+  testWidgets(
+    'partner intro',
+    (t) async => shoot(
+      t,
+      PartnerScreen(app: demoState(), scene: sceneById('bakery')),
+      '15-partner-intro',
+    ),
+  );
+  testWidgets(
+    'word lesson intro',
+    (t) async =>
+        shoot(t, WordLessonScreen(app: demoState(), day: 0), '16-word-intro'),
   );
   testWidgets(
     'practice hub',

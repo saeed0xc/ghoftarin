@@ -1,26 +1,35 @@
 import 'package:flutter/material.dart';
 
-/// Colors from the prototype (calm teal + sage).
+/// Bright, friendly palette in the style of Duolingo: green for progress and
+/// main actions, blue for information, yellow for stars, orange for streaks.
 class C {
-  static const bg = Color(0xFFF3F5F2);
+  static const bg = Color(0xFFFFFFFF);
   static const surface = Color(0xFFFFFFFF);
-  static const paper = Color(0xFFFBF8F1);
-  static const paperLine = Color(0xFFE6E0D2);
-  static const ink = Color(0xFF1F2A2E);
-  static const muted = Color(0xFF5F6D72);
-  static const line = Color(0xFFDCE2DE);
-  static const brand = Color(0xFF3F7584);
-  static const brandDark = Color(0xFF2C5763);
-  static const brandSoft = Color(0xFFD5E6EA);
-  static const brandTint = Color(0xFFE4EEF0);
-  static const soft = Color(0xFF4D8A5C);
-  static const softDark = Color(0xFF2F6B3E);
-  static const softBg = Color(0xFFE2F0E5);
-  static const warm = Color(0xFFB9732F);
-  static const warmDark = Color(0xFF7A4A1C);
-  static const warmBg = Color(0xFFFBF1E6);
-  static const warn = Color(0xFFA4483A);
-  static const warnBg = Color(0xFFF5E1DD);
+  static const paper = Color(0xFFFFFBF0);
+  static const paperLine = Color(0xFFF1E7CF);
+  static const ink = Color(0xFF3C3C3C);
+  static const muted = Color(0xFF6F6F6F);
+  static const line = Color(0xFFE5E5E5);
+  static const brand = Color(0xFF58CC02); // feather green
+  static const brandDark = Color(0xFF46A302); // its shadow / text on light
+  static const brandSoft = Color(0xFFD7FFB8);
+  static const brandTint = Color(0xFFF0FFE4);
+  static const soft = Color(0xFF58CC02);
+  static const softDark = Color(0xFF3E8F02);
+  static const softBg = Color(0xFFE5FFD1);
+  static const warm = Color(0xFFFF9600); // fox orange
+  static const warmDark = Color(0xFFB35F00);
+  static const warmBg = Color(0xFFFFF0D9);
+  static const warn = Color(0xFFEA2B2B);
+  static const warnBg = Color(0xFFFFDFE0);
+  static const blue = Color(0xFF1CB0F6); // macaw blue
+  static const blueDark = Color(0xFF1899D6);
+  static const blueBg = Color(0xFFDDF4FF);
+  static const gold = Color(0xFFFFC800); // bee yellow
+  static const goldDark = Color(0xFFE5A800);
+  static const purple = Color(0xFFCE82FF);
+  static const locked = Color(0xFFE5E5E5);
+  static const lockedDark = Color(0xFFC7C7C7);
 }
 
 const kUiFont = 'Vazirmatn';
@@ -49,19 +58,19 @@ ThemeData buildTheme() {
         backgroundColor: C.brand,
         foregroundColor: Colors.white,
         minimumSize: const Size.fromHeight(54),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         textStyle: const TextStyle(
           fontFamily: kUiFont,
-          fontSize: 16,
-          fontWeight: FontWeight.w700,
+          fontSize: 17,
+          fontWeight: FontWeight.w800,
         ),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        foregroundColor: C.brandDark,
+        foregroundColor: C.blueDark,
         minimumSize: const Size(48, 54),
-        side: const BorderSide(color: C.line),
+        side: const BorderSide(color: C.line, width: 2),
         backgroundColor: C.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         textStyle: const TextStyle(
@@ -73,7 +82,7 @@ ThemeData buildTheme() {
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
-        foregroundColor: C.brand,
+        foregroundColor: C.blueDark,
         minimumSize: const Size(48, 44),
         textStyle: const TextStyle(
           fontFamily: kUiFont,
@@ -84,7 +93,7 @@ ThemeData buildTheme() {
     ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: C.surface,
-      indicatorColor: C.brandTint,
+      indicatorColor: C.blueBg,
       surfaceTintColor: Colors.transparent,
       labelTextStyle: WidgetStateProperty.resolveWith(
         (s) => TextStyle(
@@ -93,12 +102,12 @@ ThemeData buildTheme() {
           fontWeight: s.contains(WidgetState.selected)
               ? FontWeight.w700
               : FontWeight.w400,
-          color: s.contains(WidgetState.selected) ? C.brandDark : C.muted,
+          color: s.contains(WidgetState.selected) ? C.blueDark : C.muted,
         ),
       ),
       iconTheme: WidgetStateProperty.resolveWith(
         (s) => IconThemeData(
-          color: s.contains(WidgetState.selected) ? C.brandDark : C.muted,
+          color: s.contains(WidgetState.selected) ? C.blueDark : C.muted,
         ),
       ),
     ),
@@ -129,9 +138,99 @@ class AppCard extends StatelessWidget {
     padding: padding,
     decoration: BoxDecoration(
       color: color,
-      borderRadius: BorderRadius.circular(20),
-      border: border ? Border.all(color: C.line) : null,
+      borderRadius: BorderRadius.circular(18),
+      border: border ? Border.all(color: C.line, width: 2) : null,
     ),
     child: child,
   );
+}
+
+/// The chunky 3D button: a solid face on a darker base that sinks when
+/// pressed.
+class ChunkyButton extends StatefulWidget {
+  final String label;
+  final VoidCallback? onPressed;
+  final Color color;
+  final Color shadow;
+  final Color textColor;
+  final IconData? icon;
+  const ChunkyButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.color = C.brand,
+    this.shadow = C.brandDark,
+    this.textColor = Colors.white,
+    this.icon,
+  });
+
+  @override
+  State<ChunkyButton> createState() => _ChunkyButtonState();
+}
+
+class _ChunkyButtonState extends State<ChunkyButton> {
+  bool _down = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final on = widget.onPressed != null;
+    final face = on ? widget.color : C.locked;
+    final base = on ? widget.shadow : C.lockedDark;
+    return Semantics(
+      button: true,
+      enabled: on,
+      label: widget.label,
+      excludeSemantics: true,
+      // screen readers (and taps routed through semantics) activate it too
+      onTap: on ? widget.onPressed : null,
+      child: GestureDetector(
+        onTapDown: on ? (_) => setState(() => _down = true) : null,
+        onTapCancel: () => setState(() => _down = false),
+        onTapUp: on
+            ? (_) {
+                setState(() => _down = false);
+                widget.onPressed!();
+              }
+            : null,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 60),
+          margin: EdgeInsets.only(top: _down ? 4 : 0),
+          padding: EdgeInsets.only(bottom: _down ? 0 : 4),
+          decoration: BoxDecoration(
+            color: base,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            height: 52,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: face,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.icon != null) ...[
+                  Icon(
+                    widget.icon,
+                    color: on ? widget.textColor : C.muted,
+                    size: 22,
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                Text(
+                  widget.label,
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: on ? widget.textColor : C.muted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

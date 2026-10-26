@@ -13,6 +13,8 @@ abstract final class Kind {
   static const slow = 'slow'; // slow practice round with a long pause
   static const words = 'words'; // word ladder
   static const talk = 'talk'; // free speech (monologue)
+  static const partner = 'partner'; // conversation partner scene
+  static const book = 'book'; // daily story half page
 }
 
 class SessionRecord {
@@ -23,6 +25,10 @@ class SessionRecord {
   final List<PhraseResult> results;
   int? selfRating; // 0..9, severity rating of the day (0 = no stuttering)
   double? ssPercent; // %SS counted by a listener for this session
+
+  /// 0..1 quality used for path stars (e.g. share of words said soft and
+  /// stretched). Null for sessions outside the path.
+  double? score;
 
   SessionRecord({
     required this.date,
@@ -43,18 +49,22 @@ class SessionRecord {
     'r': results.map((e) => e.toJson()).toList(),
     if (selfRating != null) 's': selfRating,
     if (ssPercent != null) 'ss': ssPercent,
+    if (score != null) 'q': score,
   };
 
-  factory SessionRecord.fromJson(Map<String, dynamic> j) => SessionRecord(
-    date: DateTime.parse(j['d'] as String),
-    passageId: j['p'] as String,
-    waitTarget: (j['w'] as num).toDouble(),
-    results: (j['r'] as List)
-        .map((e) => PhraseResult.fromJson(e as Map<String, dynamic>))
-        .toList(),
-    selfRating: j['s'] as int?,
-    kind: j['k'] as String? ?? Kind.read,
-  )..ssPercent = (j['ss'] as num?)?.toDouble();
+  factory SessionRecord.fromJson(Map<String, dynamic> j) =>
+      SessionRecord(
+          date: DateTime.parse(j['d'] as String),
+          passageId: j['p'] as String,
+          waitTarget: (j['w'] as num).toDouble(),
+          results: (j['r'] as List)
+              .map((e) => PhraseResult.fromJson(e as Map<String, dynamic>))
+              .toList(),
+          selfRating: j['s'] as int?,
+          kind: j['k'] as String? ?? Kind.read,
+        )
+        ..ssPercent = (j['ss'] as num?)?.toDouble()
+        ..score = (j['q'] as num?)?.toDouble();
 }
 
 class Assessment {
@@ -132,9 +142,29 @@ class AppState extends ChangeNotifier {
   DateTime? stageSince;
   bool coachOn = true; // spoken guidance
 
+  /// Stars (1..3) of each finished path node, in order.
+  final List<int> pathStars = [];
+
+  int get totalStars => pathStars.fold(0, (a, b) => a + b);
+
+  /// Saves a finished node: a new node is appended, a review keeps the
+  /// better result.
+  Future<void> completeNode(int index, int stars, {bool review = false}) async {
+    if (review && index < pathStars.length) {
+      if (stars > pathStars[index]) pathStars[index] = stars;
+    } else if (index == pathStars.length) {
+      pathStars.add(stars);
+    }
+    await save();
+  }
+
   bool get needsTherapistNudge => !withTherapist;
 
   static const minWait = 0.8, maxWait = 3.0;
+
+  /// Pause for the slow practice round: clearly longer than the daily
+  /// target, so the technique can be exaggerated.
+  double get slowWait => (waitTarget + 0.8).clamp(2.6, 3.0);
 
   Future<void> load() async {
     _prefs = await SharedPreferences.getInstance();
@@ -165,6 +195,9 @@ class AppState extends ChangeNotifier {
       final since = j['stageSince'] as String?;
       stageSince = since == null ? null : DateTime.tryParse(since);
       coachOn = j['coach'] as bool? ?? true;
+      pathStars
+        ..clear()
+        ..addAll(((j['path'] as List?) ?? []).cast<int>());
       situationLogs
         ..clear()
         ..addAll(
@@ -202,6 +235,7 @@ class AppState extends ChangeNotifier {
     'stage': stage,
     if (stageSince != null) 'stageSince': stageSince!.toIso8601String(),
     'coach': coachOn,
+    'path': pathStars,
     'sit': situationLogs.map((e) => e.toJson()).toList(),
     if (assessment != null) 'assess': assessment!.toJson(),
     'sessions': sessions.map((s) => s.toJson()).toList(),
@@ -250,6 +284,7 @@ class AppState extends ChangeNotifier {
     stage = 1;
     stageSince = null;
     coachOn = true;
+    pathStars.clear();
     situationLogs.clear();
     assessment = null;
     sessions.clear();

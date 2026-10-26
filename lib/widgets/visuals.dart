@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../fa.dart';
 import '../theme.dart';
 
 /// The breath ring: fills while the user pauses before speaking.
@@ -357,4 +358,72 @@ class BreathOrb extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Duolingo-style lesson progress bar.
+class LessonProgress extends StatelessWidget {
+  final double value; // 0..1
+  const LessonProgress({super.key, required this.value});
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: 'پیشرفت درس',
+    value: faPercent(value),
+    child: Container(
+      height: 16,
+      decoration: BoxDecoration(
+        color: C.line,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      alignment: AlignmentDirectional.centerStart,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(end: value.clamp(0.0, 1.0)),
+        duration: const Duration(milliseconds: 300),
+        builder: (context, v, _) => FractionallySizedBox(
+          widthFactor: v == 0 ? 0.04 : v,
+          child: Container(
+            decoration: BoxDecoration(
+              color: C.brand,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            alignment: Alignment.topCenter,
+            padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
+            child: Container(
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// One to three gold stars.
+class StarRow extends StatelessWidget {
+  final int stars;
+  final double size;
+  const StarRow({super.key, required this.stars, this.size = 56});
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: '${faNum(stars)} ستاره از ۳',
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (var i = 0; i < 3; i++)
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: size * 0.06),
+            child: Icon(
+              Icons.star_rounded,
+              size: i == 1 ? size * 1.2 : size,
+              color: i < stars ? C.gold : C.line,
+            ),
+          ),
+      ],
+    ),
+  );
 }

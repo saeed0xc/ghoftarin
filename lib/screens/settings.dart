@@ -351,7 +351,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'نسخه‌ی ۰٫۶ · آزمایشی · متن‌ها در حال بازبینی گفتاردرمانگر',
+            'نسخه‌ی ۰٫۷ · آزمایشی · متن‌ها در حال بازبینی گفتاردرمانگر',
             style: TextStyle(fontSize: 12, color: C.muted),
           ),
         ],

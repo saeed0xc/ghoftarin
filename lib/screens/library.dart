@@ -6,7 +6,6 @@ import '../fa.dart';
 import '../theme.dart';
 import 'lessons.dart';
 import 'monologue.dart';
-import 'plan_runner.dart';
 import 'practice.dart';
 import 'situations.dart';
 import 'words.dart';
@@ -55,7 +54,7 @@ class LibraryScreen extends StatelessWidget {
                 PracticeScreen(
                   app: app,
                   passage: slowPassage,
-                  overrideWait: slowWait(app),
+                  overrideWait: app.slowWait,
                 ),
               ),
               _tile(
